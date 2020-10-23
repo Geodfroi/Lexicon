@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.BorderPane?>
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="ch.azure.aurore.lexicon.MainController"
+            prefHeight="400.0" prefWidth="600.0">
+    <top>
+        <MenuBar BorderPane.alignment="CENTER">
+            <Menu fx:id="fileMenu" mnemonicParsing="false" text="File">
+                <MenuItem mnemonicParsing="false" onAction="#closeApplication" text="Close" />
+                <MenuItem mnemonicParsing="false" onAction="#selectDatabase" text="Select Database" />
+                <SeparatorMenuItem visible="false" />
+            </Menu>
+            <!--            <Menu mnemonicParsing="false" text="Edit">-->
+            <!--                <MenuItem mnemonicParsing="false" onAction="#createEntry" text="Add New Entry">-->
+            <!--                    <accelerator>-->
+            <!--                        <KeyCodeCombination alt="UP" code="N" control="DOWN" meta="UP" shift="UP" shortcut="UP" />-->
+            <!--                    </accelerator>-->
+            <!--                </MenuItem>-->
+            <!--                <MenuItem mnemonicParsing="false" onAction="#updateEntry" text="Update Selection">-->
+            <!--                    <accelerator>-->
+            <!--                        <KeyCodeCombination alt="UP" code="M" control="DOWN" meta="UP" shift="UP" shortcut="UP" />-->
+            <!--                    </accelerator>-->
+            <!--                </MenuItem>-->
+
+            <!--                <MenuItem mnemonicParsing="false" onAction="#deleteEntry" text="Delete Selection">-->
+            <!--                    <accelerator>-->
+            <!--                        <KeyCodeCombination alt="UP" code="DELETE" control="UP" meta="UP" shift="UP" shortcut="UP" />-->
+            <!--                    </accelerator>-->
+            <!--                </MenuItem>-->
+            <!--            </Menu>-->
+            <!--            <Menu mnemonicParsing="false" text="Navigation">-->
+            <!--                <Menu text="TimeFilter">-->
+            <!--                    <CheckMenuItem fx:id="checkMenu_byMonth" text="By Month" selected="true"/>-->
+            <!--                    <CheckMenuItem fx:id="checkMenu_byYear" text="By Year"/>-->
+            <!--                    <CheckMenuItem fx:id="checkMenu_showAll" text="Show All"/>-->
+            <!--                </Menu>-->
+
+            <!--            </Menu>-->
+        </MenuBar>
+    </top>
+    <center>
+        <ListView fx:id="entriesListView"/>
+    </center>
+</BorderPane>
