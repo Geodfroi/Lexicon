@@ -1,5 +1,7 @@
 package ch.azure.aurore.lexicon.data;
 
+import JavaExt.IO.DataSt;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +39,8 @@ public class DataAccess {
 
         if (conn != null)
             close();
+
+        DataSt.backupFile(databasePath);
 
         String connectStr = "jdbc:sqlite:" + databasePath;
         try {
@@ -91,8 +95,7 @@ public class DataAccess {
 
             result = insertContentStatement.getGeneratedKeys();
             if (result.next()) {
-                int newID = result.getInt(1);
-                return newID;
+                return result.getInt(1);
             }
             throw new SQLException("New content insert failed: can't get id");
 
@@ -111,7 +114,6 @@ public class DataAccess {
     }
 
     public void InsertLink(int minID, int maxID) {
-        ResultSet result = null;
         try {
             insertLinkStatement.setInt(1, minID);
             insertLinkStatement.setInt(2, maxID);
@@ -122,14 +124,6 @@ public class DataAccess {
 
         } catch (SQLException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                if (result != null) {
-                    result.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
 

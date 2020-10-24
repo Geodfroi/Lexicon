@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class EntryContent {
+
     int id;
     List<String> labels;
     String content;

@@ -1,5 +1,6 @@
 package ch.azure.aurore.lexicon;
 
+import JavaExt.IO.Settings;
 import ch.azure.aurore.lexicon.data.DataAccess;
 import ch.azure.aurore.lexicon.data.EntryContent;
 import javafx.application.Platform;
@@ -17,9 +18,9 @@ import java.util.List;
 public class MainController {
 
     @FXML
-    public BorderPane borderPane;
+    public BorderPane root;
     @FXML
-    public ListView entriesListView;
+    public ListView<EntryContent> entriesListView;
 
     @FXML
     public Menu fileMenu;
@@ -36,22 +37,21 @@ public class MainController {
 
         FileChooser dialog = new FileChooser();
         dialog.setTitle("Select Database");
-        File file = dialog.showOpenDialog(borderPane.getScene().getWindow());
-        throw new UnsupportedOperationException("Not implemented yet: selectDatabase");
+        File file = dialog.showOpenDialog(root.getScene().getWindow());
 
-        //        if (file != null){
-//            String databasePath = file.getAbsolutePath();
-//            String databaseName = file.getName();
-//
-//            System.out.println("Database selected: " + databasePath);
-//            Settings.getInstance().set(Main.DATABASE_CURRENT_PROPERTY, databaseName);
-//            Settings.getInstance().setEntry(Main.DATABASE_LIST_PROPERTY, databaseName, databasePath);
-//
-//            DataAccess.getInstance().open(databasePath);
-//            reloadEntries();
-//        }
-//        else
-//            System.out.println("No database selected");
+        if (file != null){
+            String databasePath = file.getAbsolutePath();
+            String databaseName = file.getName();
+
+            if (DataAccess.getInstance().open(databasePath)){
+                reloadEntries();
+
+                Settings.getInstance().set(App.FILE_CURRENT_PROPERTY, databaseName);
+                Settings.getInstance().setMapValue(App.FILES_LIST_PROPERTY, databaseName, databasePath);
+
+                System.out.println("Database selected: " + databasePath);
+            }
+        }
     }
 
     public void reloadEntries() {
