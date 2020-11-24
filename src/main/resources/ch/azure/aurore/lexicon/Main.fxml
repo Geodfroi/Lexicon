@@ -2,6 +2,7 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
 <BorderPane fx:id="root" xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="ch.azure.aurore.lexicon.MainController"
@@ -41,7 +42,15 @@
             <!--            </Menu>-->
         </MenuBar>
     </top>
-    <center>
+    <right>
         <ListView fx:id="entriesListView"/>
+    </right>
+    <center>
+        <VBox>
+            <TextField fx:id="labelsTextField"/>
+            <TextField fx:id="linksTextField"/>
+            <TextArea fx:id="textArea"/>
+        </VBox>
+
     </center>
 </BorderPane>

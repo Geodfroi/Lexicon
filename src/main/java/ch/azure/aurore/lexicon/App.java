@@ -8,6 +8,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.Optional;
 
 /**
  * JavaFX App
@@ -35,9 +36,9 @@ public class App extends Application {
     }
 
     private String retrievePath() {
-        String currentDatabase = Settings.getInstance().get(FILE_CURRENT_PROPERTY);
-        if (currentDatabase != null) {
-            return Settings.getInstance().getMapValue(FILES_LIST_PROPERTY, currentDatabase);
+        Optional<String> currentDatabase = Settings.getInstance().getStr(FILE_CURRENT_PROPERTY);
+        if (currentDatabase.isPresent()) {
+            return Settings.getInstance().getMapValue(FILES_LIST_PROPERTY, currentDatabase.get());
         }
         return null;
     }
