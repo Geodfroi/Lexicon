@@ -1,41 +1,46 @@
 package ch.azure.aurore.lexicon.data;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import ch.azure.aurore.Collections.CollectionSt;
+import ch.azure.aurore.Strings.Strings;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class EntryContent {
 
     private final int id;
-    private final List<String> labels;
+    private final String labels;
     private String content;
     private boolean modified;
 
-    public static List<String> labelsFromStr(String labelStr){
-        if (labelStr == null || labelStr.isEmpty() || labelStr.isBlank())
-            return new ArrayList<>();
+    public static String reorderLabels(String labels){
+        if (labels == null || labels.isEmpty() || labels.isBlank())
+            return "";
 
-        List<String> labels  = Arrays.asList(labelStr.split(", ").clone());
-        labels.sort(Comparator.naturalOrder());
-        return labels;
+        List<String> list = Arrays.stream(labels.split(", *")).
+                map(Strings::toFirstLower).
+                sorted(String::compareToIgnoreCase).collect(Collectors.toList());
+
+        return CollectionSt.toString(list, ", ");
     }
 
     public EntryContent(int id, String content, String labelStr) {
         this.id = id;
         this.content = content;
-        this.labels = labelsFromStr(labelStr);
+        this.labels = labelStr;
     }
 
     public int getId() {
         return id;
     }
 
-    public List<String> getLabels() {
+    public String getLabels() {
         return labels;
     }
 
     public String getContent() {
+        if (this.content == null)
+            return "";
         return content;
     }
 
@@ -50,22 +55,6 @@ public class EntryContent {
         this.modified = true;
     }
 
-    public String getFirstLabel() {
-        if (labels.size() == 0)
-            return "";
-        return labels.get(0);
-    }
-
-    public String getLabelStr() {
-        StringBuilder str = new StringBuilder();
-        for (int n = 0; n < labels.size(); n++) {
-            str.append(labels.get(n));
-            if (n < labels.size()-1)
-                str.append(", ");
-        }
-        return str.toString();
-    }
-
     public void save() {
         if (modified){
             modified = false;
@@ -76,6 +65,10 @@ public class EntryContent {
 
     @Override
     public String toString() {
-        return labels.get(0);
+        return labels;
+    }
+
+    public boolean isEmpty() {
+        return content == null || content.isEmpty() || content.isBlank();
     }
 }

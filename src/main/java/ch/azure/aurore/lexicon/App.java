@@ -1,6 +1,6 @@
 package ch.azure.aurore.lexicon;
 
-import JavaExt.IO.API.LocalSave;
+import ch.azure.aurore.IO.API.LocalSave;
 import ch.azure.aurore.lexicon.data.DataAccess;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -30,6 +30,7 @@ public class App extends Application {
         if (path != null && DataAccess.getInstance().open(path)){
             MainController controller = fxmlLoader.getController();
             controller.reloadEntries();
+            controller.showEntriesList();
         }
 
         stage.show();

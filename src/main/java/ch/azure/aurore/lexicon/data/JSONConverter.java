@@ -1,6 +1,6 @@
 package ch.azure.aurore.lexicon.data;
 
-import JavaExt.Collections.CollectionSt;
+import ch.azure.aurore.Collections.CollectionSt;
 
 import java.io.File;
 import java.nio.file.Path;

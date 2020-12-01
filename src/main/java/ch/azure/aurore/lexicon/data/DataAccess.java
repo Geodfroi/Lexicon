@@ -1,11 +1,13 @@
 package ch.azure.aurore.lexicon.data;
 
-import JavaExt.IO.API.FileHelper;
+import ch.azure.aurore.IO.API.FileHelper;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DataAccess {
+
+    //region constants
 
     private static final String ENTRIES_TABLE_NAME = "Entries";
     private static final String LINKS_TABLE_NAME = "Links";
@@ -23,6 +25,8 @@ public class DataAccess {
     private static final String QUERY_ENTRIES_STATEMENT = "SELECT * FROM " + ENTRIES_TABLE_NAME;
     private static final String UPDATE_ENTRY_STATEMENT = "UPDATE " + ENTRIES_TABLE_NAME + " SET " + ENTRIES_CONTENT_FIELD + " = ?, " + ENTRIES_LABEL_FIELD + " = ? WHERE _id = ?";
     private static final String REMOVE_ENTRY_STATEMENT = "DELETE FROM " + ENTRIES_TABLE_NAME + " WHERE _id = ?";
+
+    //endregion
 
     public static void main(String[] args) {
         String pathStr =  "C:\\Users\\auror\\OneDrive\\Apps\\Lexicon\\TestLexicon.SQLite";
@@ -106,10 +110,9 @@ public class DataAccess {
 
     public boolean updateEntry(EntryContent entry){
 
-        System.out.println("update entry: " + entry.getFirstLabel());
         try {
             updateEntryStatement.setString(1, entry.getContent());
-            updateEntryStatement.setString(2, entry.getLabelStr());
+            updateEntryStatement.setString(2, entry.getLabels());
             updateEntryStatement.setInt(3, entry.getId());
 
             int updateCount = updateEntryStatement.executeUpdate();
