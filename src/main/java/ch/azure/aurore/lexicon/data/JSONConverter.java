@@ -3,8 +3,6 @@ package ch.azure.aurore.lexicon.data;
 import JavaExt.Collections.CollectionSt;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -60,7 +58,7 @@ public class JSONConverter {
 
             var link = new JSONLink(firstID, secondID);
             links.add(link);
-            database.InsertLink(link.getMinID(), link.getMaxID());
+            database.insertLink(link.getMinID(), link.getMaxID());
             System.out.println("Insert link: " + link.getMinID() + "-" + link.getMaxID());
         }
         else
@@ -73,7 +71,7 @@ public class JSONConverter {
 
             String labels = CollectionSt.toString(entry.getLabels(), ", ");
             System.out.println("Entry : " + labels);
-            int id = database.NewContent(entry.content, labels);
+            int id = database.createEntry(entry.content, labels);
             entry.setId(id);
         }
     }

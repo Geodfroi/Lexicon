@@ -1,7 +1,6 @@
 package ch.azure.aurore.lexicon.data;
 
-import JavaExt.IO.DataSt;
-
+import JavaExt.IO.API.FileHelper;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +21,19 @@ public class DataAccess {
     private static final String INSERT_CONTENT_STATEMENT = "INSERT INTO " + ENTRIES_TABLE_NAME + " (" + ENTRIES_CONTENT_FIELD + ", " + ENTRIES_LABEL_FIELD + ") VALUES (?,?)";
     private static final String INSERT_LINK_STATEMENT = "INSERT INTO " + LINKS_TABLE_NAME + " (" + LINKS_MIN_FIELD + ", " + LINKS_MAX_FIELD + ") VALUES (?,?)";
     private static final String QUERY_ENTRIES_STATEMENT = "SELECT * FROM " + ENTRIES_TABLE_NAME;
+    private static final String UPDATE_ENTRY_STATEMENT = "UPDATE " + ENTRIES_TABLE_NAME + " SET " + ENTRIES_CONTENT_FIELD + " = ?, " + ENTRIES_LABEL_FIELD + " = ? WHERE _id = ?";
+    private static final String REMOVE_ENTRY_STATEMENT = "DELETE FROM " + ENTRIES_TABLE_NAME + " WHERE _id = ?";
+
+    public static void main(String[] args) {
+        String pathStr =  "C:\\Users\\auror\\OneDrive\\Apps\\Lexicon\\TestLexicon.SQLite";
+        DataAccess.getInstance().open(pathStr);
+        DataAccess.getInstance().createEntry("Wolves and Elephants are animals", "animal");
+        DataAccess.getInstance().createEntry("The wolf is an animal", "wolf");
+        DataAccess.getInstance().createEntry("Elephants are very big", "elephants");
+
+        DataAccess.getInstance().close();
+        FileHelper.openFile("C:\\Users\\auror\\OneDrive\\Apps\\Lexicon");
+    }
 
     public static DataAccess getInstance() {
         return instance;
@@ -32,6 +44,8 @@ public class DataAccess {
     private PreparedStatement insertContentStatement;
     private PreparedStatement insertLinkStatement;
     private PreparedStatement queryAllStatement;
+    private PreparedStatement removeEntryStatement;
+    private PreparedStatement updateEntryStatement;
 
     private Connection conn;
 
@@ -40,7 +54,7 @@ public class DataAccess {
         if (conn != null)
             close();
 
-        DataSt.backupFile(databasePath);
+        FileHelper.backupFile(databasePath);
 
         String connectStr = "jdbc:sqlite:" + databasePath;
         try {
@@ -54,7 +68,8 @@ public class DataAccess {
             insertContentStatement = conn.prepareStatement(INSERT_CONTENT_STATEMENT);
             insertLinkStatement = conn.prepareStatement(INSERT_LINK_STATEMENT);
             queryAllStatement = conn.prepareStatement(QUERY_ENTRIES_STATEMENT);
-
+            updateEntryStatement = conn.prepareStatement(UPDATE_ENTRY_STATEMENT);
+            removeEntryStatement = conn.prepareStatement(REMOVE_ENTRY_STATEMENT);
             return true;
 
         } catch (SQLException e) {
@@ -75,6 +90,12 @@ public class DataAccess {
             if (queryAllStatement != null)
                 queryAllStatement.close();
 
+            if (removeEntryStatement != null)
+                removeEntryStatement.close();
+
+            if (updateEntryStatement != null)
+                updateEntryStatement.close();
+
             if (conn != null)
                 conn.close();
 
@@ -83,7 +104,27 @@ public class DataAccess {
         }
     }
 
-    public int NewContent(String contentStr, String labels) {
+    public boolean updateEntry(EntryContent entry){
+
+        System.out.println("update entry: " + entry.getFirstLabel());
+        try {
+            updateEntryStatement.setString(1, entry.getContent());
+            updateEntryStatement.setString(2, entry.getLabelStr());
+            updateEntryStatement.setInt(3, entry.getId());
+
+            int updateCount = updateEntryStatement.executeUpdate();
+            if (updateCount != 1)
+                throw new SQLException("Update failed");
+
+            return true;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public int createEntry(String contentStr, String labels) {
         ResultSet result = null;
         try {
             insertContentStatement.setString(1, contentStr);
@@ -113,7 +154,7 @@ public class DataAccess {
         }
     }
 
-    public void InsertLink(int minID, int maxID) {
+    public void insertLink(int minID, int maxID) {
         try {
             insertLinkStatement.setInt(1, minID);
             insertLinkStatement.setInt(2, maxID);
@@ -127,17 +168,17 @@ public class DataAccess {
         }
     }
 
-    public List<EntryContent> QueryEntries() {
+    public List<EntryContent> queryEntries() {
         ResultSet result = null;
         List<EntryContent> list = new ArrayList<>();
         try {
-
             result = queryAllStatement.executeQuery();
             while (result.next()) {
-                EntryContent item = new EntryContent();
-                item.setId(result.getInt(1));
-                item.setContent(result.getString(2));
-                item.setLabels(result.getString(3));
+
+                int id = result.getInt(1);
+                String content = result.getString(2);
+                String labels = result.getString(3);
+                EntryContent item = new EntryContent(id, content, labels);
                 list.add(item);
             }
 
@@ -153,5 +194,20 @@ public class DataAccess {
             }
         }
         return list;
+    }
+
+    public boolean removeEntry(EntryContent item) {
+        try {
+            removeEntryStatement.setInt(1, item.getId());
+            if (removeEntryStatement.executeUpdate() == 1) {
+                return true;
+            }
+
+            throw new SQLException("Delete operation failed");
+
+        }catch (SQLException e){
+            e.printStackTrace();
+            return false;
+        }
     }
 }

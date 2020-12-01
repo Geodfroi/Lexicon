@@ -1,6 +1,6 @@
 package ch.azure.aurore.lexicon;
 
-import JavaExt.IO.Settings;
+import JavaExt.IO.API.LocalSave;
 import ch.azure.aurore.lexicon.data.DataAccess;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -22,7 +22,7 @@ public class App extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource(MAIN_FXML_FILENAME));
-        Scene scene = new Scene(fxmlLoader.load(), 1000, 700);
+        Scene scene = new Scene(fxmlLoader.load(), 1000, 600);
         stage.setScene(scene);
         stage.setTitle("Lexicon");
 
@@ -36,9 +36,9 @@ public class App extends Application {
     }
 
     private String retrievePath() {
-        Optional<String> currentDatabase = Settings.getInstance().getStr(FILE_CURRENT_PROPERTY);
+        Optional<String> currentDatabase = LocalSave.getStr(FILE_CURRENT_PROPERTY);
         if (currentDatabase.isPresent()) {
-            return Settings.getInstance().getMapValue(FILES_LIST_PROPERTY, currentDatabase.get());
+            return LocalSave.getMapValue(FILES_LIST_PROPERTY, currentDatabase.get());
         }
         return null;
     }

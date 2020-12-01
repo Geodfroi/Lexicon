@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.*?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.TextFlow?>
 <BorderPane fx:id="root" xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="ch.azure.aurore.lexicon.MainController"
-            prefHeight="400.0" prefWidth="600.0">
+            prefHeight="400.0" prefWidth="600.0"
+            stylesheets="@Main.css">
     <top>
         <MenuBar BorderPane.alignment="CENTER">
             <Menu fx:id="fileMenu" mnemonicParsing="false" text="File">
-                <MenuItem mnemonicParsing="false" onAction="#closeApplication" text="Close" />
                 <MenuItem mnemonicParsing="false" onAction="#selectDatabase" text="Select Database" />
+                <MenuItem mnemonicParsing="false" onAction="#closeApplication" text="Close" />
                 <SeparatorMenuItem visible="false" />
+            </Menu>
+            <Menu mnemonicParsing="false" text="Edit">
+                <MenuItem mnemonicParsing="false" text="Create new entry" onAction="#createEntry"/>
+                <MenuItem mnemonicParsing="false" text="Delete entry" onAction="#deleteEntry"/>
             </Menu>
             <!--            <Menu mnemonicParsing="false" text="Edit">-->
             <!--                <MenuItem mnemonicParsing="false" onAction="#createEntry" text="Add New Entry">-->
@@ -43,14 +48,16 @@
         </MenuBar>
     </top>
     <right>
-        <ListView fx:id="entriesListView"/>
+        <ListView fx:id="entriesListView" id="rightListView" prefWidth="200"></ListView>
     </right>
     <center>
-        <VBox>
+        <VBox fx:id="textVbox" id="centerVBox" spacing="4">
             <TextField fx:id="labelsTextField"/>
             <TextField fx:id="linksTextField"/>
-            <TextArea fx:id="textArea"/>
+            <StackPane VBox.vgrow="ALWAYS">
+                <TextArea fx:id="textArea" id="textArea" wrapText="true"/>
+                <TextFlow fx:id="textFlow" id="textFlow" textAlignment="JUSTIFY"/>
+            </StackPane>
         </VBox>
-
     </center>
 </BorderPane>

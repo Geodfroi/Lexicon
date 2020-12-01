@@ -1,21 +1,24 @@
 package ch.azure.aurore.lexicon;
 
-import JavaExt.IO.Settings;
+import JavaExt.IO.API.LocalSave;
 import ch.azure.aurore.lexicon.data.DataAccess;
 import ch.azure.aurore.lexicon.data.EntryContent;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.SortedList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.control.ListView;
-import javafx.scene.control.Menu;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +33,11 @@ public class MainController implements Initializable {
     @FXML
     public ListView<EntryContent> entriesListView;
     @FXML
+    public VBox textVbox;
+    @FXML
     public TextArea textArea;
+    @FXML
+    public TextFlow textFlow;
     @FXML
     public TextField labelsTextField;
     @FXML
@@ -39,19 +46,44 @@ public class MainController implements Initializable {
     public Menu fileMenu;
 
     private ObservableList<EntryContent> observableList;
+    private TextLoader textLoader;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        entriesListView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
-            display(newValue);
-        });
+        entriesListView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> display(newValue));
+        textLoader = new TextLoader(textArea, textFlow);
+
+        ContextMenu menu = new ContextMenu();
+        MenuItem delete = new MenuItem("Delete Selection");
+        delete.setOnAction(actionEvent -> deleteEntry());
+        menu.getItems().add(delete);
+
+        entriesListView.setContextMenu(menu);
+    }
+
+    @FXML
+    private void deleteEntry() {
+        EntryContent item = entriesListView.getSelectionModel().getSelectedItem();
+        if (item == null){
+            System.out.println("no selection for delete");
+        }else{
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setHeaderText("Delete selected entry ?");
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+
+                if (DataAccess.getInstance().removeEntry(item)){
+                    observableList.remove(item);
+                }
+            }
+        }
     }
 
     private void display(EntryContent value) {
-        textArea.setText(value.getContent());
+        textLoader.loadDisplayText(value);
         String labelStr = JavaExt.Collections.CollectionSt.toString(value.getLabels());
         labelsTextField.setText(labelStr);
-        Settings.getInstance().set(CURRENT_ENTRY, value.getId());
+        LocalSave.set(CURRENT_ENTRY, value.getId());
     }
 
     @FXML
@@ -73,8 +105,8 @@ public class MainController implements Initializable {
             if (DataAccess.getInstance().open(databasePath)){
                 reloadEntries();
 
-                Settings.getInstance().set(App.FILE_CURRENT_PROPERTY, databaseName);
-                Settings.getInstance().setMapValue(App.FILES_LIST_PROPERTY, databaseName, databasePath);
+                LocalSave.set(App.FILE_CURRENT_PROPERTY, databaseName);
+                LocalSave.setMapValue(App.FILES_LIST_PROPERTY, databaseName, databasePath);
 
                 System.out.println("Database selected: " + databasePath);
             }
@@ -82,17 +114,47 @@ public class MainController implements Initializable {
     }
 
     public void reloadEntries() {
-        System.out.println("reload entries");
-        List<EntryContent> list = DataAccess.getInstance().QueryEntries();
+        List<EntryContent> list = DataAccess.getInstance().queryEntries();
 
         observableList = FXCollections.observableList(list);
-        entriesListView.setItems(observableList);
+        SortedList<EntryContent> sortedList = new SortedList<>(observableList, (left, right) -> left.getFirstLabel().compareToIgnoreCase(right.getFirstLabel()));
+        entriesListView.setItems(sortedList);
 
-        Optional<Integer> currentID = Settings.getInstance().getInt(CURRENT_ENTRY);
+        Optional<Integer> currentID = LocalSave.getInt(CURRENT_ENTRY);
         if (currentID.isPresent())
         {
             Optional<EntryContent> result =  list.stream().filter(entryContent -> entryContent.getId() == currentID.get()).findAny();
             result.ifPresent(entryContent -> entriesListView.getSelectionModel().select(entryContent));
+        }
+    }
+
+    @FXML
+    public void createEntry()  {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.initOwner(root.getScene().getWindow());
+        dialog.setTitle("Create Entry");
+
+        FXMLLoader fxmlLoader = new FXMLLoader();
+        fxmlLoader.setLocation(getClass().getResource("NewEntry.fxml"));
+        NewEntryController dialogController = new NewEntryController();
+        fxmlLoader.setController(dialogController);
+
+        try {
+            dialog.getDialogPane().setContent(fxmlLoader.load());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to create create dialog");
+        }
+
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+        dialog.getDialogPane().lookupButton(ButtonType.OK).setDisable(true);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK){
+            EntryContent item = dialogController.createItem();
+            observableList.add(item);
+            System.out.println("adding to list");
         }
     }
 }
