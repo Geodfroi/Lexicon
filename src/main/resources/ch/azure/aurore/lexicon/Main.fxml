@@ -11,11 +11,7 @@
             stylesheets="@Main.css">
     <top>
         <MenuBar BorderPane.alignment="CENTER">
-            <Menu fx:id="fileMenu" mnemonicParsing="false" text="File">
-                <MenuItem mnemonicParsing="false" onAction="#selectDatabase" text="Select Database" />
-                <MenuItem mnemonicParsing="false" onAction="#closeApplication" text="Close" />
-                <SeparatorMenuItem visible="false" />
-            </Menu>
+            <Menu fx:id="fileMenu" mnemonicParsing="false" text="File"/>
             <Menu mnemonicParsing="false" text="Edit">
                 <MenuItem mnemonicParsing="false" text="Create new entry" onAction="#createEntry">
                     <accelerator>
@@ -31,6 +27,18 @@
             <Menu mnemonicParsing="false" text="Display">
                 <CheckMenuItem fx:id="showEmptyCheckMenu" text="Show empty entries" selected="true" onAction="#showEmpty"/>
             </Menu>
+            <Menu text="Navigation">
+                <MenuItem fx:id="lastMenuItem" text="Last entry">
+                    <accelerator>
+                        <KeyCodeCombination alt="UP" code="COMMA" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                    </accelerator>
+                </MenuItem>
+                <MenuItem fx:id="nextMenuItem" text="Next entry">
+                    <accelerator>
+                        <KeyCodeCombination alt="UP" code="PERIOD" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                    </accelerator>
+                </MenuItem>
+            </Menu>
         </MenuBar>
     </top>
     <right>
@@ -41,15 +49,15 @@
     </right>
     <center>
         <VBox fx:id="textVbox" id="centerVBox" spacing="4">
-            <TextField fx:id="labelsTextField"/>
+            <TextField fx:id="labelsTextField" id="labelsTextField"/>
             <StackPane>
-                <TextField fx:id="linksTextField"/>
-                <TextFlow fx:id="linksTextFlow" focusTraversable="false"/>
+                <TextField fx:id="linksTextField" id="linksTextField"/>
+                <TextFlow fx:id="linksTextFlow" id="linksTextFlow" mouseTransparent="false"/>
             </StackPane>
             <StackPane VBox.vgrow="ALWAYS">
                 <TextArea fx:id="contentTextArea" id="textArea"
                           wrapText="true"/>
-                <TextFlow fx:id="contentTextFlow" id="textFlow" focusTraversable="false"
+                <TextFlow fx:id="contentTextFlow" id="textFlow" mouseTransparent="false"
                           textAlignment="JUSTIFY"/>
             </StackPane>
         </VBox>

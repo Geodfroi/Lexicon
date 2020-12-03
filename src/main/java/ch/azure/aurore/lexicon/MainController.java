@@ -1,8 +1,8 @@
 package ch.azure.aurore.lexicon;
 
 import ch.azure.aurore.IO.API.LocalSave;
-import ch.azure.aurore.lexicon.data.DataAccess;
-import ch.azure.aurore.lexicon.data.EntryContent;
+import ch.azure.aurore.lexiconDB.EntryContent;
+import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -23,22 +23,39 @@ import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.function.Predicate;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class MainController implements Initializable {
 
     //region constants
-    private static final String CURRENT_ENTRY = "currentEntry";
+
+    private static final String CURRENT_ENTRIES = "currentEntries";
+    public static final String FILE_CURRENT_PROPERTY = "currentFile";
+    public static final String FILES_LIST_PROPERTY = "filesList";
     private static final String SHOW_EMPTY_PROPERTY = "showEmptyEntries";
+
     //endregion
 
     //region fields
+
+    //region FXML fields
+
+
     @FXML
     public BorderPane root;
+
     @FXML
-    public ListView<EntryContent> entriesListView;
+    public Menu fileMenu;
+    @FXML
+    public MenuItem lastMenuItem;
+    @FXML
+    public MenuItem nextMenuItem;
+
+    @FXML
+    ListView<EntryContent> entriesListView;
     @FXML
     public VBox textVbox;
     @FXML
@@ -50,29 +67,36 @@ public class MainController implements Initializable {
     @FXML
     public TextField linksTextField;
     @FXML
-    public Menu fileMenu;
-    @FXML
     public CheckMenuItem showEmptyCheckMenu;
     @FXML
     public TextField searchTextField;
     @FXML
     public TextFlow linksTextFlow;
 
-    private ObservableList<EntryContent> entries;
+    //endregion
+
     private TextLoader textLoader;
     private LinkHandler linkHandler;
     private String filterStr = "";
+
+    private String currentDatabase;
     private EntryContent currentEntry;
+    private ObservableList<EntryContent> entries;
+
+    private MenuItem selectDatabaseMenu;
+    private MenuItem closeMenu;
+
+    NavStack<EntryContent> navStack = new NavStack<>();
 
     //endregion
 
     //region getters
 
-    public EntryContent getCurrentEntry() {
+    EntryContent getCurrentEntry() {
         return currentEntry;
     }
 
-    public List<EntryContent> getEntries() {
+    List<EntryContent> getEntries() {
         return entries;
     }
 
@@ -84,7 +108,7 @@ public class MainController implements Initializable {
         textLoader = new TextLoader(this);
         linkHandler = new LinkHandler(this);
 
-        entriesListView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> display(newValue));
+        entriesListView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> entrySelected(newValue));
 
         //entries context menu
         ContextMenu menu = new ContextMenu();
@@ -96,52 +120,23 @@ public class MainController implements Initializable {
 
         // show empty entries menu
         Optional<Boolean> result = LocalSave.getBoolean(SHOW_EMPTY_PROPERTY);
-        if (result.isPresent()){
-            showEmptyCheckMenu.setSelected(result.get());
-        }
+        result.ifPresent(aBoolean -> showEmptyCheckMenu.setSelected(aBoolean));
 
         // search box
         searchTextField.textProperty().addListener((observableValue, s, t1) -> {
             filterStr = t1;
             showEntriesList();
         });
-    }
 
-    @FXML
-    private void deleteEntry() {
-        EntryContent item = entriesListView.getSelectionModel().getSelectedItem();
-        if (item == null){
-            System.out.println("no selection for delete");
-        }else{
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setHeaderText("Delete selected entry ?");
-            Optional<ButtonType> result = alert.showAndWait();
-            if (result.isPresent() && result.get() == ButtonType.OK) {
+        // file menus
+        selectDatabaseMenu = new MenuItem("Select Database");
+        selectDatabaseMenu.setOnAction(actionEvent -> openDiskDatabase());
+        closeMenu = new MenuItem("Close application");
+        closeMenu.setOnAction(actionEvent -> Platform.exit());
 
-                if (DataAccess.getInstance().removeEntry(item)){
-                    entries.remove(item);
-                }
-            }
-        }
-    }
-
-    private void display(EntryContent value) {
-        if (value != null){
-            if (this.currentEntry != null)
-                this.currentEntry.save();
-            this.currentEntry = value;
-
-            textLoader.setTextFlow();
-            linkHandler.setTextFlow();
-            labelsTextField.setText(value.getLabels());
-            LocalSave.set(CURRENT_ENTRY, value.getId());
-        }
-    }
-
-    @FXML
-    public void closeApplication()
-    {
-        Platform.exit();
+        // navigation menus
+        lastMenuItem.setOnAction(actionEvent -> navStack(Direction.backward));
+        nextMenuItem.setOnAction(actionEvent -> navStack(Direction.forward));
     }
 
     @FXML
@@ -175,58 +170,143 @@ public class MainController implements Initializable {
     }
 
     @FXML
-    public void selectDatabase() {
+    private void deleteEntry() {
+        EntryContent item = entriesListView.getSelectionModel().getSelectedItem();
+        if (item == null){
+            System.out.println("no selection for delete");
+        }else{
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setHeaderText("Delete selected entry ?");
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+
+                if (LexiconDatabase.getInstance().removeEntry(item)){
+                    entries.remove(item);
+                }
+            }
+        }
+    }
+
+    private void entrySelected(EntryContent value) {
+        if (value != null){
+            if (this.currentEntry != null)
+                this.currentEntry.save();
+            this.currentEntry = value;
+
+            textLoader.setTextFlow();
+            linkHandler.setTextFlow();
+            labelsTextField.setText(value.getLabels());
+
+            LocalSave.setMapValue(CURRENT_ENTRIES, currentDatabase, value.getId());
+            navStack.add(value);
+
+            lastMenuItem.setDisable(!navStack.hasFormer());
+            nextMenuItem.setDisable(!navStack.hasNext());
+        }
+    }
+
+    private void navStack(Direction dir) {
+        EntryContent entry = navStack.navigateStack(dir);
+        entriesListView.getSelectionModel().select(entry);
+    }
+
+    public void openDiskDatabase() {
         FileChooser dialog = new FileChooser();
         dialog.setTitle("Select Database");
         File file = dialog.showOpenDialog(root.getScene().getWindow());
 
         if (file != null){
             String databasePath = file.getAbsolutePath();
-            String databaseName = file.getName();
-
-            if (DataAccess.getInstance().open(databasePath)){
-                reloadEntries();
-
-                LocalSave.set(App.FILE_CURRENT_PROPERTY, databaseName);
-                LocalSave.setMapValue(App.FILES_LIST_PROPERTY, databaseName, databasePath);
-
-                System.out.println("Database selected: " + databasePath);
+            if (LexiconDatabase.getInstance().open(databasePath)){
+                selectDatabase(file.getName());
+                LocalSave.setMapValue(FILES_LIST_PROPERTY, currentDatabase, databasePath);
             }
-        }
-    }
-
-    public void showEntriesList() {
-
-        FilteredList<EntryContent> filteredList = new FilteredList<>(entries, new Predicate<EntryContent>() {
-            @Override
-            public boolean test(EntryContent entryContent) {
-                if (!showEmptyCheckMenu.isSelected() && entryContent.isEmpty()) {
-                    return false;
-                }
-                Pattern pattern = Pattern.compile("^.*" +filterStr + ".*$");
-                Matcher matcher = pattern.matcher(entryContent.getLabels());
-                if (!matcher.matches())
-                    return false;
-
-                return true;
-            }
-        });
-        SortedList<EntryContent> sortedList = new SortedList<>(filteredList, (left, right) -> left.getLabels().compareToIgnoreCase(right.getLabels()));
-        entriesListView.setItems(sortedList);
-
-        Optional<Integer> currentID = LocalSave.getInt(CURRENT_ENTRY);
-        if (currentID.isPresent())
-        {
-            Optional<EntryContent> result =  sortedList.stream().
-                    filter(e -> e.getId() == currentID.get()).findAny();
-
-            result.ifPresent(e -> entriesListView.getSelectionModel().select(e));
+            else
+                reloadFileMenu();
         }
     }
 
     public void reloadEntries() {
-        List<EntryContent> list = DataAccess.getInstance().queryEntries();
-        entries = FXCollections.observableList(list);
+
+        Optional<String> query = LocalSave.getStr(FILE_CURRENT_PROPERTY);
+        if (query.isPresent()) {
+            this.currentDatabase = query.get();
+            Optional<String> pathResult = LocalSave.getMapString(FILES_LIST_PROPERTY, currentDatabase);
+            if (pathResult.isPresent() && LexiconDatabase.getInstance().open(pathResult.get())){
+
+                List<EntryContent> list = LexiconDatabase.getInstance().queryEntries();
+                entries = FXCollections.observableList(list);
+                showEntriesList();
+            }
+        }
+        reloadFileMenu();
+    }
+
+    private void reloadFileMenu() {
+        fileMenu.getItems().clear();
+        fileMenu.getItems().add(selectDatabaseMenu);
+
+        Set<String> set = LocalSave.getMapValues(FILES_LIST_PROPERTY).keySet();
+
+        if (set.size() > 0 && currentDatabase != null)
+        {
+            fileMenu.getItems().add(new SeparatorMenuItem());
+
+            List<CheckMenuItem> list = set.stream().
+                    sorted(String::compareToIgnoreCase).
+                    map(CheckMenuItem::new).
+                    collect(Collectors.toList());
+
+            list.forEach(checkMenuItem -> {
+                if (currentDatabase.equals(checkMenuItem.getText()))
+                    checkMenuItem.setSelected(true);
+
+                checkMenuItem.setOnAction(actionEvent -> {
+                    for (CheckMenuItem menuItem: list) {
+                        menuItem.setSelected(menuItem == checkMenuItem);
+                    }
+                    if (!currentDatabase.equals(checkMenuItem.getText()))
+                        selectDatabase(checkMenuItem.getText());
+                });
+                fileMenu.getItems().add(checkMenuItem);
+            });
+
+            fileMenu.getItems().add(new SeparatorMenuItem());
+        }
+
+        fileMenu.getItems().add(closeMenu);
+    }
+
+    private void selectDatabase(String name) {
+        currentDatabase = name;
+        LocalSave.set(FILE_CURRENT_PROPERTY, currentDatabase);
+        navStack.clear();
+        reloadEntries();
+
+    }
+
+    public void showEntriesList() {
+
+        FilteredList<EntryContent> filteredList = new FilteredList<>(entries, entryContent -> {
+            if (!showEmptyCheckMenu.isSelected() && entryContent.isEmpty()) {
+                return false;
+            }
+            Pattern pattern = Pattern.compile("^.*" + filterStr + ".*$");
+            Matcher matcher = pattern.matcher(entryContent.getLabels());
+            return matcher.matches();
+        });
+        SortedList<EntryContent> sortedList = new SortedList<>(filteredList, (left, right) -> left.getLabels().compareToIgnoreCase(right.getLabels()));
+        entriesListView.setItems(sortedList);
+        if (currentDatabase != null){
+            Optional<Integer> currentID = LocalSave.getMapInteger(CURRENT_ENTRIES, currentDatabase);
+            if (currentID.isPresent())
+            {
+                Optional<EntryContent> result =  sortedList.stream().
+                        filter(e -> e.getId() == currentID.get()).findAny();
+
+                result.ifPresent(e -> entriesListView.getSelectionModel().select(e));
+            }
+        }
     }
 
     @FXML

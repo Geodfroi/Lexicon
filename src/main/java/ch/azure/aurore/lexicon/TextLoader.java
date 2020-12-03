@@ -1,8 +1,8 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.lexicon.data.EntryContent;
-import javafx.beans.value.ChangeListener;
+import ch.azure.aurore.lexiconDB.EntryContent;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.text.Text;
 
@@ -12,40 +12,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class TextLink{
-
-    private final int endIndex;
-    private final int startIndex;
-    private final EntryContent entry;
-
-    public EntryContent getEntry() {
-        return entry;
-    }
-
-    public TextLink(EntryContent entry, int startIndex, int endIndex) {
-        this.entry=entry;
-        this.startIndex = startIndex;
-        this.endIndex = endIndex;
-    }
-
-    public int getEndIndex() {
-        return endIndex;
-    }
-
-    public int getStartIndex() {
-        return startIndex;
-    }
-
-    @Override
-    public String toString() {
-        return entry.getLabels() + "@"+ startIndex;
-    }
-}
-
 public class TextLoader {
 
     private final MainController main;
-    ChangeListener<String> textListener;
 
     public TextLoader(MainController main) {
         this.main = main;
@@ -55,47 +24,32 @@ public class TextLoader {
                 switchToEdit();
             }
         });
-        textListener = (observableValue, s, t1) -> {
-            if (main.getCurrentEntry() != null)
-                main.getCurrentEntry().setContent(t1);
-        };
-        main.contentTextArea.focusedProperty().addListener((observableValue, aBoolean, t1) -> {
-            textAreaFocus(t1);
-        });
+        main.contentTextArea.focusedProperty().addListener((observableValue, aBoolean, t1) -> textAreaFocus(t1));
     }
 
-    int count =0;
     private void textAreaFocus(Boolean hasFocus) {
         if (hasFocus){
             main.contentTextArea.setText(main.getCurrentEntry().getContent());
-            main.contentTextArea.textProperty().addListener(textListener);
-            count++;
-
             main.contentTextFlow.getChildren().clear();
-            main.contentTextFlow.setFocusTraversable(false);
-            main.contentTextFlow.setMouseTransparent(true);
-
         }else{
-            System.out.println(main.getCurrentEntry().getContent());
+            main.getCurrentEntry().setContent(main.contentTextArea.getText());
             main.getCurrentEntry().save();
 
-            main.contentTextArea.textProperty().removeListener(textListener);
-            main.contentTextArea.setText("");
+            main.contentTextArea.clear();
 
-            main.contentTextFlow.setMouseTransparent(false);
             setTextFlow();
         }
     }
 
     public void setTextFlow() {
 
-        var currentEntry = main.getCurrentEntry();
+        EntryContent currentEntry = main.getCurrentEntry();
 
         main.contentTextFlow.getChildren().clear();
         if (currentEntry == null || currentEntry.isEmpty()) {
             return;
         }
-        var currentEntryContent = currentEntry.getContent();
+        String currentEntryContent = currentEntry.getContent();
         List<TextLink>links = new ArrayList<>();
 
         for (EntryContent entry: main.getEntries()) {
@@ -108,7 +62,6 @@ public class TextLoader {
                 {
                     TextLink link = new TextLink(entry, matcher.start(), matcher.end());
                     links.add(link);
-                    System.out.println(label + ": " + matcher.start());
                 }
             }
         }
@@ -141,5 +94,35 @@ public class TextLoader {
     private void switchToEdit() {
         main.contentTextArea.requestFocus();
         main.contentTextArea.end();
+    }
+}
+
+class TextLink{
+
+    private final int endIndex;
+    private final int startIndex;
+    private final EntryContent entry;
+
+    public EntryContent getEntry() {
+        return entry;
+    }
+
+    public TextLink(EntryContent entry, int startIndex, int endIndex) {
+        this.entry=entry;
+        this.startIndex = startIndex;
+        this.endIndex = endIndex;
+    }
+
+    public int getEndIndex() {
+        return endIndex;
+    }
+
+    public int getStartIndex() {
+        return startIndex;
+    }
+
+    @Override
+    public String toString() {
+        return entry.getLabels() + "@"+ startIndex;
     }
 }

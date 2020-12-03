@@ -20,7 +20,12 @@
         </dependency>
         <dependency>
             <groupId>ch.azure.aurore</groupId>
-            <artifactId>JavaExt</artifactId>
+            <artifactId>lexicon-database</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.azure.aurore</groupId>
+            <artifactId>java-ext</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>

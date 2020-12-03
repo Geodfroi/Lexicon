@@ -1,7 +1,7 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.lexicon.data.DataAccess;
-import ch.azure.aurore.lexicon.data.EntryContent;
+import ch.azure.aurore.lexiconDB.EntryContent;
+import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -37,7 +37,7 @@ public class NewEntryController implements Initializable {
     public EntryContent createItem() {
         String content =contentTextArea.getText();
         String labels =labelTextField.getText();
-        int id =  DataAccess.getInstance().createEntry(content,labels);
+        int id =  LexiconDatabase.getInstance().createEntry(content,labels);
         return new EntryContent(id, content, labels);
     }
 
