@@ -1,31 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.input.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.TextFlow?>
-<?import javafx.scene.input.KeyCodeCombination?>
-<BorderPane fx:id="root" xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="ch.azure.aurore.lexicon.MainController"
-            prefHeight="400.0" prefWidth="600.0"
-            stylesheets="@Main.css">
+<?import javafx.scene.text.*?>
+
+<BorderPane fx:id="root" prefHeight="400.0" prefWidth="600.0" stylesheets="@Main.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ch.azure.aurore.lexicon.MainController">
     <top>
         <MenuBar BorderPane.alignment="CENTER">
-            <Menu fx:id="fileMenu" mnemonicParsing="false" text="File"/>
+            <Menu fx:id="fileMenu" mnemonicParsing="false" text="File" />
             <Menu mnemonicParsing="false" text="Edit">
-                <MenuItem mnemonicParsing="false" text="Create new entry" onAction="#createEntry">
+                <MenuItem mnemonicParsing="false" onAction="#createEntry" text="Create new entry">
                     <accelerator>
                         <KeyCodeCombination alt="UP" code="N" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
                     </accelerator>
                 </MenuItem>
-                <MenuItem mnemonicParsing="false" text="Delete entry" onAction="#deleteEntry">
+                <MenuItem mnemonicParsing="false" onAction="#deleteEntry" text="Delete entry">
                     <accelerator>
                         <KeyCodeCombination alt="UP" code="DELETE" control="UP" meta="UP" shift="UP" shortcut="UP" />
                     </accelerator>
                 </MenuItem>
             </Menu>
             <Menu mnemonicParsing="false" text="Display">
-                <CheckMenuItem fx:id="showEmptyCheckMenu" text="Show empty entries" selected="true" onAction="#showEmpty"/>
+                <CheckMenuItem fx:id="showEmptyCheckMenu" onAction="#showEmpty" selected="true" text="Show empty entries" />
             </Menu>
             <Menu text="Navigation">
                 <MenuItem fx:id="lastMenuItem" text="Last entry">
@@ -42,24 +41,46 @@
         </MenuBar>
     </top>
     <right>
-        <VBox id="rightVBox" spacing="4">
-            <TextField fx:id="searchTextField" promptText="[filter]"/>
-            <ListView fx:id="entriesListView" id="rightListView" prefWidth="200"/>
+        <VBox id="rightVBox" prefWidth="200" spacing="4">
+            <TextField fx:id="searchTextField" promptText="[filter]" GridPane.columnIndex="1" />
+            <ListView id="rightListView" fx:id="entriesListView" />
         </VBox>
     </right>
     <center>
-        <VBox fx:id="textVbox" id="centerVBox" spacing="4">
-            <TextField fx:id="labelsTextField" id="labelsTextField"/>
-            <StackPane>
-                <TextField fx:id="linksTextField" id="linksTextField"/>
-                <TextFlow fx:id="linksTextFlow" id="linksTextFlow" mouseTransparent="false"/>
+        <GridPane fx:id="gridPane">
+            <StackPane fx:id="imageStackPane" id="imageStackPane" prefWidth="128" prefHeight="128" GridPane.rowSpan="2">
+                <ImageView fx:id="imageView" fitHeight="128" fitWidth="128" >
+<!--                    <image>-->
+<!--                        <Image url="@Images/imageIcon.png" />-->
+<!--                    </image>-->
+                </ImageView>
+
+                <GridPane.margin>
+                    <Insets bottom="8" right="8" />
+                </GridPane.margin>
             </StackPane>
-            <StackPane VBox.vgrow="ALWAYS">
-                <TextArea fx:id="contentTextArea" id="textArea"
-                          wrapText="true"/>
-                <TextFlow fx:id="contentTextFlow" id="textFlow" mouseTransparent="false"
-                          textAlignment="JUSTIFY"/>
+            <TextField id="labelsTextField" fx:id="labelsTextField" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS">
+                <GridPane.margin>
+                    <Insets bottom="4" />
+                </GridPane.margin>
+            </TextField>
+            <StackPane GridPane.columnIndex="1" GridPane.rowIndex="1" alignment="TOP_LEFT">
+                <TextField id="linksTextField" fx:id="linksTextField" />
+                <TextFlow id="linksTextFlow" fx:id="linksTextFlow" mouseTransparent="false" />
             </StackPane>
-        </VBox>
+            <StackPane maxWidth="Infinity" GridPane.columnSpan="2" GridPane.rowIndex="2">
+                <TextArea id="textArea" fx:id="contentTextArea" wrapText="true" />
+                <TextFlow id="textFlow" fx:id="contentTextFlow" mouseTransparent="false" textAlignment="JUSTIFY" />
+            </StackPane>
+            <columnConstraints>
+                <ColumnConstraints />
+                <ColumnConstraints />
+            </columnConstraints>
+            <rowConstraints>
+                <RowConstraints />
+                <RowConstraints />
+                <RowConstraints />
+            </rowConstraints>
+        </GridPane>
     </center>
 </BorderPane>

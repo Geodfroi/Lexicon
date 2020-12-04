@@ -4,6 +4,7 @@
 .text-field{
     -fx-font-size: 14;
 }
+
 .hyperlink {
     -fx-text-fill: blue;
     -fx-padding:-2;
@@ -12,8 +13,18 @@
     -fx-underline: true;
     -fx-text-fill: red;
 }
+
 #centerVBox{
     -fx-padding: 10;
+}
+
+#gridPane{
+  -fx-padding: 10;
+}
+#imageStackPane{
+    -fx-border-color: black;
+    -fx-border-width: 2px;
+    -fx-border-radius: 2;
 }
 #rightVBox{
     -fx-padding: 10;

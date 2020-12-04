@@ -1,29 +1,37 @@
 package ch.azure.aurore.lexicon;
 
 import ch.azure.aurore.IO.API.LocalSave;
+import ch.azure.aurore.images.API.Images;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
+import javafx.embed.swing.SwingFXUtils;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 
-import java.io.File;
-import java.io.IOException;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.net.URL;
-import java.util.List;
-import java.util.Optional;
-import java.util.ResourceBundle;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -43,7 +51,6 @@ public class MainController implements Initializable {
 
     //region FXML fields
 
-
     @FXML
     public BorderPane root;
 
@@ -53,11 +60,12 @@ public class MainController implements Initializable {
     public MenuItem lastMenuItem;
     @FXML
     public MenuItem nextMenuItem;
-
+    @FXML
+    public ImageView imageView;
+    @FXML
+    public StackPane imageStackPane;
     @FXML
     ListView<EntryContent> entriesListView;
-    @FXML
-    public VBox textVbox;
     @FXML
     public TextArea contentTextArea;
     @FXML
@@ -84,9 +92,13 @@ public class MainController implements Initializable {
     private ObservableList<EntryContent> entries;
 
     private MenuItem selectDatabaseMenu;
+    private MenuItem clearDataMenu;
     private MenuItem closeMenu;
 
-    NavStack<EntryContent> navStack = new NavStack<>();
+    private final NavStack<EntryContent> navStack = new NavStack<>();
+    private Image defaultImage;
+    private Image copyIcon;
+    private Image entryImage;
 
     //endregion
 
@@ -103,12 +115,15 @@ public class MainController implements Initializable {
     //endregion
 
     //region methods
+
+    int count =0;
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         textLoader = new TextLoader(this);
         linkHandler = new LinkHandler(this);
 
-        entriesListView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> entrySelected(newValue));
+        ChangeListener<EntryContent> listViewListener = (observableValue, oldValue, newValue) -> entrySelected(newValue);
+        entriesListView.getSelectionModel().selectedItemProperty().addListener(listViewListener);
 
         //entries context menu
         ContextMenu menu = new ContextMenu();
@@ -131,12 +146,139 @@ public class MainController implements Initializable {
         // file menus
         selectDatabaseMenu = new MenuItem("Select Database");
         selectDatabaseMenu.setOnAction(actionEvent -> openDiskDatabase());
+        clearDataMenu = new MenuItem("Reset application");
+        clearDataMenu.setOnAction(this::clearData);
         closeMenu = new MenuItem("Close application");
         closeMenu.setOnAction(actionEvent -> Platform.exit());
 
         // navigation menus
         lastMenuItem.setOnAction(actionEvent -> navStack(Direction.backward));
         nextMenuItem.setOnAction(actionEvent -> navStack(Direction.forward));
+
+        //default image
+        // URL url = App.class.getResource("images/imageIcon.png");
+        URL url = App.class.getResource("images/wf.png");
+        defaultImage = new Image(url.toString());
+        url = App.class.getResource("images/copyIcon.png");
+        copyIcon = new Image(url.toString());
+        imageView.setImage(defaultImage);
+
+        //drag events
+        imageStackPane.setOnDragOver(event -> {
+            if (event.getGestureSource() != imageStackPane &&
+                    event.getDragboard().hasFiles() &&
+                    currentEntry != null) {
+                event.acceptTransferModes(TransferMode.COPY);
+            }
+
+            event.consume();
+        });
+
+        imageStackPane.setOnDragEntered(event -> {
+            if (event.getGestureSource() != imageStackPane &&
+                    event.getDragboard().hasFiles()) {
+
+                imageView.setImage(copyIcon);
+            }
+            event.consume();
+        });
+        imageStackPane.setOnDragExited(event -> {
+
+            displayImage();
+
+            event.consume();
+        });
+        imageStackPane.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles()) {
+                List<File> files = db.getFiles();
+                if (files.size() >0){
+                    System.out.println(files.get(0).toString());
+
+                    Optional<byte[]> imgArray = Images.toByteArray(files.get(0));
+                    if (imgArray.isPresent()){
+                        currentEntry.setImage(imgArray.get());
+                        LexiconDatabase.getInstance().updateEntry(currentEntry);
+                    }
+
+//                    var file = Images.getFile(res.get());
+//                    var uri = file.toURI();
+//                    var img = new Image(uri.toString());
+//                   defaultImage = img;
+//                    imageView.setImage(img);
+
+//                    var res = Images.toByteArray(files.get(0));
+//                    if (res.isPresent()){
+//                        var fxImg = Images.toFXImage(res.get());
+//                        if (fxImg.isPresent()){
+//
+//                            BufferedImage bImage = SwingFXUtils.fromFXImage(fxImg.get(), null);
+//                            try {
+//                                File outputFile = new File("testOutput.png");
+//                                ImageIO.write(bImage, "png", outputFile);
+//                            } catch (IOException e) {
+//                                throw new RuntimeException(e);
+//                            }
+//
+////                            imageIcon = fxImg.get();
+////                            imageView.setImage(imageIcon);
+//                        }
+//                    }
+
+                    //Image image = SwingFXUtils.toFXImage(img, null);
+//                        FileInputStream fi = new FileInputStream(files.get(0));
+//                        imageIcon = new Image(fi);
+//                        imageView.setImage(imageIcon);
+
+//
+//                        ByteArrayOutputStream baos= new ByteArrayOutputStream(1000);
+//                        BufferedImage img=ImageIO.read(files.get(0));
+//                        ImageIO.write(img, "png", baos);
+//                        baos.flush();
+//
+//                        String base64String= Base64.getEncoder().encodeToString(baos.toByteArray());
+//                        baos.close();
+//
+//                        byte[] bytearray = Base64.getDecoder().decode(base64String);
+//
+//                        BufferedImage imag=ImageIO.read(new ByteArrayInputStream(bytearray));
+//                        imageIcon = SwingFXUtils.toFXImage(imag, null);
+//                        imageView.setImage(imageIcon);
+                }
+                success = true;
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
+    }
+
+    private void displayImage() {
+        if (currentEntry.hasImage()){
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(currentEntry.getImage());
+            entryImage = new Image(inputStream);
+            imageView.setImage(entryImage);
+        }
+        else{
+            imageView.setImage(defaultImage);
+        }
+    }
+
+    private void clearData(ActionEvent actionEvent) {
+        LexiconDatabase.getInstance().close();
+        LocalSave.clear();
+
+        currentDatabase = null;
+        currentEntry = null;
+
+        reloadFileMenu();
+
+        entries.clear();
+
+        linksTextFlow.getChildren().clear();
+        contentTextFlow.getChildren().clear();
+        labelsTextField.clear();
+        imageView.setImage(defaultImage);
     }
 
     @FXML
@@ -196,6 +338,7 @@ public class MainController implements Initializable {
             textLoader.setTextFlow();
             linkHandler.setTextFlow();
             labelsTextField.setText(value.getLabels());
+            displayImage();
 
             LocalSave.setMapValue(CURRENT_ENTRIES, currentDatabase, value.getId());
             navStack.add(value);
@@ -245,6 +388,7 @@ public class MainController implements Initializable {
     private void reloadFileMenu() {
         fileMenu.getItems().clear();
         fileMenu.getItems().add(selectDatabaseMenu);
+        fileMenu.getItems().add(clearDataMenu);
 
         Set<String> set = LocalSave.getMapValues(FILES_LIST_PROPERTY).keySet();
 
@@ -282,13 +426,12 @@ public class MainController implements Initializable {
         LocalSave.set(FILE_CURRENT_PROPERTY, currentDatabase);
         navStack.clear();
         reloadEntries();
-
     }
 
     public void showEntriesList() {
 
         FilteredList<EntryContent> filteredList = new FilteredList<>(entries, entryContent -> {
-            if (!showEmptyCheckMenu.isSelected() && entryContent.isEmpty()) {
+            if (!showEmptyCheckMenu.isSelected() && entryContent.hasContent()) {
                 return false;
             }
             Pattern pattern = Pattern.compile("^.*" + filterStr + ".*$");
