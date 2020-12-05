@@ -33,7 +33,7 @@ public class TextLoader {
             main.contentTextFlow.getChildren().clear();
         }else{
             main.getCurrentEntry().setContent(main.contentTextArea.getText());
-            main.getCurrentEntry().save();
+            //main.getCurrentEntry().save();
 
             main.contentTextArea.clear();
 
@@ -46,7 +46,7 @@ public class TextLoader {
         EntryContent currentEntry = main.getCurrentEntry();
 
         main.contentTextFlow.getChildren().clear();
-        if (currentEntry == null || currentEntry.isEmpty()) {
+        if (currentEntry == null || !currentEntry.hasContent()) {
             return;
         }
         String currentEntryContent = currentEntry.getContent();

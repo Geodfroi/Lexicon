@@ -37,8 +37,8 @@ public class NewEntryController implements Initializable {
     public EntryContent createItem() {
         String content =contentTextArea.getText();
         String labels =labelTextField.getText();
-        int id =  LexiconDatabase.getInstance().createEntry(content,labels);
-        return new EntryContent(id, content, labels);
+        int id =  LexiconDatabase.getInstance().createEntry(content, labels, null);
+        return new EntryContent(id, content, labels, null);
     }
 
     @Override
@@ -46,8 +46,8 @@ public class NewEntryController implements Initializable {
         labelEventListener = (observableValue, s, t1) -> validate();
         labelTextField.textProperty().addListener(labelEventListener);
         labelTextField.focusedProperty().addListener((observableValue, aBoolean, t1) -> {
-               if (!t1)
-                   reorderLabels();
+            if (!t1)
+                setLabels();
         });
     }
 
@@ -65,13 +65,10 @@ public class NewEntryController implements Initializable {
         return false;
     }
 
-    private void reorderLabels() {
-        String reorderedLabels = EntryContent.reorderLabels(labelTextField.getText());
-        if (!reorderedLabels.equals(labelTextField.getText())){
-            labelTextField.textProperty().removeListener(labelEventListener);
-            labelTextField.setText(reorderedLabels);
-            labelTextField.textProperty().addListener(labelEventListener);
-        }
+    private void setLabels() {
+        labelTextField.textProperty().removeListener(labelEventListener);
+        labelTextField.setText(labelTextField.getText());
+        labelTextField.textProperty().addListener(labelEventListener);
     }
 
     private void validate() {

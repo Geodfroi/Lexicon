@@ -1,14 +1,12 @@
 package ch.azure.aurore.lexicon;
 
+import ch.azure.aurore.Strings.Strings;
 import ch.azure.aurore.lexiconDB.EntriesLink;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.scene.control.Hyperlink;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -29,7 +27,8 @@ public class LinkHandler {
     private void updateLinks(String linkStr) {
 
         List<Pattern> patterns = Arrays.stream(linkStr.split(", *")).
-                map(s -> Pattern.compile("^.*\\b"+ s +"\\b.*$")).collect(Collectors.toList());
+                    map(s -> LabelHandler.getSearchPattern(Strings.camel(s))).
+                    collect(Collectors.toList());
 
         Set<EntriesLink> newLinks = main.getEntries().stream().filter(entryContent -> {
             for (Pattern pattern:patterns) {
@@ -38,7 +37,8 @@ public class LinkHandler {
                     return true;
             }
             return false;
-        }).map(e -> new EntriesLink(main.getCurrentEntry().getId(), e.getId())).collect(Collectors.toSet());
+        }).map(e -> new EntriesLink(main.getCurrentEntry().getId(), e.getId())).
+                collect(Collectors.toSet());
 
         Set<EntriesLink> toRemove = new HashSet<>(links);
         toRemove.removeAll(newLinks);
@@ -73,7 +73,7 @@ public class LinkHandler {
     public void setTextFlow() {
         EntryContent currentEntry = main.getCurrentEntry();
         main.linksTextFlow.getChildren().clear();
-        if (currentEntry == null || currentEntry.isEmpty()) {
+        if (currentEntry == null || !currentEntry.hasContent()) {
             return;
         }
 

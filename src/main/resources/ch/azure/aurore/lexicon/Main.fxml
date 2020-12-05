@@ -12,19 +12,19 @@
         <MenuBar BorderPane.alignment="CENTER">
             <Menu fx:id="fileMenu" mnemonicParsing="false" text="File" />
             <Menu mnemonicParsing="false" text="Edit">
-                <MenuItem mnemonicParsing="false" onAction="#createEntry" text="Create new entry">
+                <MenuItem fx:id="createEntryMenu" mnemonicParsing="false" text="Create new entry">
                     <accelerator>
                         <KeyCodeCombination alt="UP" code="N" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
                     </accelerator>
                 </MenuItem>
-                <MenuItem mnemonicParsing="false" onAction="#deleteEntry" text="Delete entry">
+                <MenuItem fx:id="deleteEntryMenu" mnemonicParsing="false" text="Delete entry">
                     <accelerator>
                         <KeyCodeCombination alt="UP" code="DELETE" control="UP" meta="UP" shift="UP" shortcut="UP" />
                     </accelerator>
                 </MenuItem>
             </Menu>
             <Menu mnemonicParsing="false" text="Display">
-                <CheckMenuItem fx:id="showEmptyCheckMenu" onAction="#showEmpty" selected="true" text="Show empty entries" />
+                <CheckMenuItem fx:id="showEmptyCheckMenu" selected="true" text="Show empty entries" />
             </Menu>
             <Menu text="Navigation">
                 <MenuItem fx:id="lastMenuItem" text="Last entry">
@@ -47,14 +47,9 @@
         </VBox>
     </right>
     <center>
-        <GridPane fx:id="gridPane">
+        <GridPane>
             <StackPane fx:id="imageStackPane" id="imageStackPane" prefWidth="128" prefHeight="128" GridPane.rowSpan="2">
-                <ImageView fx:id="imageView" fitHeight="128" fitWidth="128" >
-<!--                    <image>-->
-<!--                        <Image url="@Images/imageIcon.png" />-->
-<!--                    </image>-->
-                </ImageView>
-
+                <ImageView fx:id="imageView" fitHeight="128" fitWidth="128"/>
                 <GridPane.margin>
                     <Insets bottom="8" right="8" />
                 </GridPane.margin>
@@ -66,11 +61,11 @@
             </TextField>
             <StackPane GridPane.columnIndex="1" GridPane.rowIndex="1" alignment="TOP_LEFT">
                 <TextField id="linksTextField" fx:id="linksTextField" />
-                <TextFlow id="linksTextFlow" fx:id="linksTextFlow" mouseTransparent="false" />
+                <TextFlow id="linksTextFlow" fx:id="linksTextFlow"/>
             </StackPane>
             <StackPane maxWidth="Infinity" GridPane.columnSpan="2" GridPane.rowIndex="2">
                 <TextArea id="textArea" fx:id="contentTextArea" wrapText="true" />
-                <TextFlow id="textFlow" fx:id="contentTextFlow" mouseTransparent="false" textAlignment="JUSTIFY" />
+                <TextFlow id="textFlow" fx:id="contentTextFlow" textAlignment="JUSTIFY" />
             </StackPane>
             <columnConstraints>
                 <ColumnConstraints />

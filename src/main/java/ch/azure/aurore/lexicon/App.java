@@ -1,6 +1,5 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -13,15 +12,19 @@ import java.io.IOException;
  */
 public class App extends Application {
 
+    private static final String APP_NAME = "Lexicon";
+
+    private MainController mainController;
+
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("Main.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1000, 600);
         stage.setScene(scene);
-        stage.setTitle("Lexicon");
+        stage.setTitle(APP_NAME);
 
-        MainController controller = fxmlLoader.getController();
-        controller.reloadEntries();
+        mainController = fxmlLoader.getController();
+        mainController.reloadEntries();
 
         stage.show();
     }
@@ -32,7 +35,7 @@ public class App extends Application {
 
     @Override
     public void stop() throws Exception {
+        mainController.quit();
         super.stop();
-        LexiconDatabase.getInstance().close();
     }
 }
