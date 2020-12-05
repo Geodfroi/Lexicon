@@ -2,11 +2,9 @@ package ch.azure.aurore.lexicon;
 
 import ch.azure.aurore.IO.API.LocalSave;
 import ch.azure.aurore.lexiconDB.EntryContent;
-import ch.azure.aurore.lexiconDB.IEntryListener;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -15,9 +13,10 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.text.TextFlow;
 
-import javax.swing.text.View;
 import java.net.URL;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
 
@@ -68,7 +67,6 @@ public class MainController implements Initializable {
     //endregion
 
     private ImageHandler imageHandler;
-    private LabelHandler labelHandler;
     private LinkHandler linkHandler;
     private ListViewHandler listViewHandler;
     private MenuBarHandler menuHandler;
@@ -136,7 +134,7 @@ public class MainController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         textLoader = new TextLoader(this);
         linkHandler = new LinkHandler(this);
-        labelHandler = new LabelHandler(this);
+        new LabelHandler(this);
         listViewHandler = new ListViewHandler(this);
         menuHandler = new MenuBarHandler(this);
         imageHandler = new ImageHandler(this);
@@ -144,10 +142,10 @@ public class MainController implements Initializable {
 
     public void reloadEntries() {
 
-        Optional<String> query = LocalSave.getStr(FILE_CURRENT_PROPERTY);
+        Optional<String> query = LocalSave.getInstance().getString(FILE_CURRENT_PROPERTY);
         if (query.isPresent()) {
             this.currentDatabase = query.get();
-            Optional<String> pathResult = LocalSave.getMapString(FILES_LIST_PROPERTY, currentDatabase);
+            Optional<String> pathResult = LocalSave.getInstance().getMapString(FILES_LIST_PROPERTY, currentDatabase);
             if (pathResult.isPresent() && LexiconDatabase.getInstance().open(pathResult.get())){
 
                 List<EntryContent> list = LexiconDatabase.getInstance().queryEntries();

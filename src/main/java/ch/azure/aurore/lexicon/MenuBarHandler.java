@@ -44,10 +44,10 @@ public class MenuBarHandler {
         //endregion
 
         //region display menu
-        Optional<Boolean> result = LocalSave.getBoolean(SHOW_EMPTY_PROPERTY);
+        Optional<Boolean> result = LocalSave.getInstance().getBoolean(SHOW_EMPTY_PROPERTY);
         result.ifPresent(aBoolean -> main.showEmptyCheckMenu.setSelected(aBoolean));
         main.showEmptyCheckMenu.setOnAction(actionEvent -> {
-            LocalSave.set(SHOW_EMPTY_PROPERTY, main.showEmptyCheckMenu.isSelected());
+            LocalSave.getInstance().set(SHOW_EMPTY_PROPERTY, main.showEmptyCheckMenu.isSelected());
             main.getListViewHandler().showEntriesList();
         });
 
@@ -61,7 +61,7 @@ public class MenuBarHandler {
 
     public void clearData() {
         LexiconDatabase.getInstance().close();
-        LocalSave.clear();
+        LocalSave.getInstance().clear();
 
         main.setCurrentDatabase(null);
         main.setCurrentEntry(null);
@@ -132,7 +132,7 @@ public class MenuBarHandler {
             String databasePath = file.getAbsolutePath();
             if (LexiconDatabase.getInstance().open(databasePath)){
                 selectDatabase(file.getName());
-                LocalSave.setMapValue(MainController.FILES_LIST_PROPERTY, main.getCurrentDatabase(), databasePath);
+                LocalSave.getInstance().setMapValue(MainController.FILES_LIST_PROPERTY, main.getCurrentDatabase(), databasePath);
             }
             else
                 reloadFileMenu();
@@ -144,7 +144,7 @@ public class MenuBarHandler {
         main.fileMenu.getItems().add(selectDatabaseMenu);
         main.fileMenu.getItems().add(clearDataMenu);
 
-        Set<String> set = LocalSave.getMapValues(MainController.FILES_LIST_PROPERTY).keySet();
+        Set<String> set = LocalSave.getInstance().getMapValues(MainController.FILES_LIST_PROPERTY).keySet();
 
         if (set.size() > 0 && main.getCurrentDatabase() != null)
         {
@@ -177,7 +177,7 @@ public class MenuBarHandler {
 
     private void selectDatabase(String name) {
         main.setCurrentDatabase(name);
-        LocalSave.set(MainController.FILE_CURRENT_PROPERTY, name);
+        LocalSave.getInstance().set(MainController.FILE_CURRENT_PROPERTY, name);
         main.getNavStack().clear();
         main.reloadEntries();
     }

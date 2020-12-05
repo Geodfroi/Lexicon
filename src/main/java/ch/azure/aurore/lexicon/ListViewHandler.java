@@ -9,7 +9,6 @@ import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.scene.control.*;
 import javafx.scene.paint.Color;
-import javafx.util.Callback;
 
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -97,7 +96,7 @@ public class ListViewHandler {
         SortedList<EntryContent> sortedList = new SortedList<>(filteredList, (left, right) -> left.getLabels().compareToIgnoreCase(right.getLabels()));
         main.entriesListView.setItems(sortedList);
         if (main.getCurrentDatabase() != null) {
-            Optional<Integer> currentID = LocalSave.getMapInteger(CURRENT_ENTRIES, main.getCurrentDatabase());
+            Optional<Integer> currentID = LocalSave.getInstance().getMapInteger(CURRENT_ENTRIES, main.getCurrentDatabase());
             if (currentID.isPresent()) {
                 Optional<EntryContent> result = sortedList.stream().
                         filter(e -> e.getId() == currentID.get()).findAny();
@@ -122,7 +121,7 @@ public class ListViewHandler {
             main.getImageHandler().enableManipulateImageMenu(currentEntry != null && currentEntry.hasImage());
 
             String currentDatabase = main.getCurrentDatabase();
-            LocalSave.setMapValue(CURRENT_ENTRIES, currentDatabase, value.getId());
+            LocalSave.getInstance().setMapValue(CURRENT_ENTRIES, currentDatabase, value.getId());
             main.getNavStack().add(value);
 
             main.getMenuHandler().enableLastMenu(main.getNavStack().hasFormer());

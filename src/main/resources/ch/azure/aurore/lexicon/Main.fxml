@@ -47,7 +47,7 @@
         </VBox>
     </right>
     <center>
-        <GridPane>
+        <GridPane id="gridPane">
             <StackPane fx:id="imageStackPane" id="imageStackPane" prefWidth="128" prefHeight="128" GridPane.rowSpan="2">
                 <ImageView fx:id="imageView" fitHeight="128" fitWidth="128"/>
                 <GridPane.margin>
