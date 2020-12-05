@@ -7,7 +7,8 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
 
-<BorderPane fx:id="root" prefHeight="400.0" prefWidth="600.0" stylesheets="@Main.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ch.azure.aurore.lexicon.MainController">
+<BorderPane fx:id="root" prefHeight="400.0" prefWidth="600.0" stylesheets="@Main.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="ch.azure.aurore.lexicon.MainController">
     <top>
         <MenuBar BorderPane.alignment="CENTER">
             <Menu fx:id="fileMenu" mnemonicParsing="false" text="File" />
@@ -25,6 +26,11 @@
             </Menu>
             <Menu mnemonicParsing="false" text="Display">
                 <CheckMenuItem fx:id="showEmptyCheckMenu" selected="true" text="Show empty entries" />
+                <MenuItem fx:id="fullScreenMenu" text="Fullscreen">
+                    <accelerator>
+                        <KeyCodeCombination alt="DOWN" code="ENTER" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                    </accelerator>
+                </MenuItem>
             </Menu>
             <Menu text="Navigation">
                 <MenuItem fx:id="lastMenuItem" text="Last entry">

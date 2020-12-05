@@ -1,6 +1,7 @@
 package ch.azure.aurore.lexicon;
 
 import ch.azure.aurore.IO.API.LocalSave;
+import ch.azure.aurore.Lists.NavStack;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.collections.FXCollections;
@@ -47,6 +48,10 @@ public class MainController implements Initializable {
     public StackPane imageStackPane;
     @FXML
     public MenuItem createEntryMenu;
+    @FXML
+    public CheckMenuItem fullScreenCheckMenu;
+    @FXML
+    public MenuItem fullScreenMenu;
     @FXML
     ListView<EntryContent> entriesListView;
     @FXML
@@ -162,6 +167,8 @@ public class MainController implements Initializable {
 
         LexiconDatabase.getInstance().close();
     }
+
+
 
     //endregion
 }

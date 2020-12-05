@@ -2,7 +2,6 @@ package ch.azure.aurore.lexicon;
 
 import ch.azure.aurore.IO.API.Disk;
 import ch.azure.aurore.images.API.Images;
-import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.geometry.Side;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -26,11 +25,11 @@ public class ImageHandler {
 
     private final MainController main;
 
-    private MenuItem extractImageMenu;
-    private MenuItem clearImageMenu;
+    private final MenuItem extractImageMenu;
+    private final MenuItem clearImageMenu;
 
-    private Image defaultImage;
-    private Image copyIcon;
+    private final Image defaultImage;
+    private final Image copyIcon;
     private Image entryImage;
     private int entryImageID = -1;
 

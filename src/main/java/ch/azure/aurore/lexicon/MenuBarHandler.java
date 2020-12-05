@@ -1,6 +1,7 @@
 package ch.azure.aurore.lexicon;
 
 import ch.azure.aurore.IO.API.LocalSave;
+import ch.azure.aurore.Lists.Directions;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.application.Platform;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 public class MenuBarHandler {
 
     private static final String SHOW_EMPTY_PROPERTY = "showEmptyEntries";
+    private static final String FULLSCREEN_PROPERTY = "fullscreen";
 
     private final MainController main;
 
@@ -51,11 +53,19 @@ public class MenuBarHandler {
             main.getListViewHandler().showEntriesList();
         });
 
+        Optional<Boolean> fullscreen = LocalSave.getInstance().getBoolean(FULLSCREEN_PROPERTY);
+        fullscreen.ifPresent(aBoolean -> App.getInstance().getStage().setFullScreen(aBoolean));
+        main.fullScreenMenu.setOnAction(actionEvent -> {
+            boolean switchedValue = !App.getInstance().getStage().isFullScreen();
+            LocalSave.getInstance().set(FULLSCREEN_PROPERTY, switchedValue);
+            App.getInstance().getStage().setFullScreen(switchedValue);
+        });
+
         //endregion
 
         //region navigation menu
-        main.lastMenuItem.setOnAction(actionEvent -> navStack(Direction.backward));
-        main.nextMenuItem.setOnAction(actionEvent -> navStack(Direction.forward));
+        main.lastMenuItem.setOnAction(actionEvent -> navStack(Directions.backward));
+        main.nextMenuItem.setOnAction(actionEvent -> navStack(Directions.forward));
         //endregion
     }
 
@@ -118,7 +128,7 @@ public class MenuBarHandler {
         return main.showEmptyCheckMenu.isSelected();
     }
 
-    private void navStack(Direction dir) {
+    private void navStack(Directions dir) {
         EntryContent entry = main.getNavStack().navigateStack(dir);
         main.entriesListView.getSelectionModel().select(entry);
     }

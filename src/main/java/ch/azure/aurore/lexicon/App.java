@@ -22,10 +22,19 @@ public class App extends Application {
     private static final String APP_NAME = "Lexicon";
     private static final String WINDOW_SIZE = "windowSize";
 
+    private static App instance;
+
     private MainController mainController;
+    private Stage stage;
+
+    public static App getInstance() {
+        return instance;
+    }
 
     @Override
     public void start(Stage stage) throws IOException {
+        instance = this;
+        this.stage = stage;
         FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("Main.fxml"));
         List<Integer> size = getSize();
 
@@ -37,8 +46,8 @@ public class App extends Application {
         mainController.reloadEntries();
 
         stage.show();
-        stage.setMaximized(false);
-        stage.setFullScreen(true);
+    //    stage.setMaximized(false);
+       // stage.setFullScreen(true);
         stage.widthProperty().addListener((observableValue, number, t1) -> {
             ArrayList<Double> size1 = new ArrayList<>(Arrays.asList(t1.doubleValue(), stage.getHeight()));
             LocalSave.getInstance().setDoubles(WINDOW_SIZE, size1);
@@ -70,5 +79,9 @@ public class App extends Application {
     public void stop() throws Exception {
         mainController.quit();
         super.stop();
+    }
+
+    Stage getStage() {
+        return stage;
     }
 }
