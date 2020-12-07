@@ -3,6 +3,7 @@ package ch.azure.aurore.lexicon;
 import ch.azure.aurore.IO.API.LocalSave;
 import ch.azure.aurore.IO.API.Settings;
 import ch.azure.aurore.IO.exceptions.MissingSettingException;
+import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;

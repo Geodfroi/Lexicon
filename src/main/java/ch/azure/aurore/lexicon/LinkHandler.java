@@ -15,12 +15,66 @@ import java.util.stream.Stream;
 public class LinkHandler {
 
     private final MainController main;
+    private EntryContent currentEntry;
 
     public LinkHandler(MainController mainController) {
         this.main = mainController;
 
         main.linksTextFlow.setOnMouseClicked(this::switchToEdit);
-        main.linksTextArea.focusedProperty().addListener((observableValue, aBoolean, t1) -> textFieldFocus(t1));
+        main.linksTextArea.focusedProperty().
+                addListener((observableValue, aBoolean, t1) -> textFieldFocus(t1));
+    }
+
+    private Hyperlink createLink(EntryContent entry) {
+        String label = entry.getFirstLabel() + ", ";
+        Hyperlink link = new Hyperlink(label);
+        link.setOnAction(actionEvent -> main.entriesListView.getSelectionModel().select(entry));
+        return link;
+    }
+
+    private void switchToEdit(MouseEvent event) {
+        main.linksTextArea.requestFocus();
+        main.linksTextArea.end();
+
+        event.consume();
+    }
+
+    public void setTextFlow(EntryContent current) {
+        main.linksTextFlow.getChildren().clear();
+        if (currentEntry == null) {
+            return;
+        }
+
+        List<Hyperlink> toSort = new ArrayList<>();
+        for (int i : LexiconDatabase.getInstance().queryEntryLinks(current.getId())) {
+            Optional<EntryContent> entry = LexiconDatabase.getInstance().queryEntry(i);
+            if (entry.isPresent()){
+                Hyperlink hyperlink = createLink(entry.get());
+                toSort.add(hyperlink);
+            }
+        }
+        toSort.sort((o1, o2) -> o1.getText().compareToIgnoreCase(o2.getText()));
+        toSort.forEach(hyperlink -> main.linksTextFlow.getChildren().add(hyperlink));
+    }
+
+    private void textFieldFocus(Boolean hasFocus) {
+        main.getMenuHandler().setAllowNavigation(!hasFocus);
+        if (hasFocus){
+            currentEntry = main.getCurrentEntry();
+            Stream<String> st = LexiconDatabase.getInstance().
+                    queryEntryLinks(currentEntry.getId()).stream().
+                    map(main::getByID).
+                    map(EntryContent::getFirstLabel);
+
+            String linksLabel = Strings.toString(st, ", ");
+
+            main.linksTextArea.setText(linksLabel);
+            main.linksTextFlow.getChildren().clear();
+        }else{
+            updateLinks(main.linksTextArea.getText());
+            main.linksTextArea.clear();
+            setTextFlow(currentEntry);
+        }
     }
 
     private void updateLinks(String linkStr) {
@@ -44,12 +98,7 @@ public class LinkHandler {
                 collect(Collectors.toSet());
 
         Set<Integer> oldLinkIds = LexiconDatabase.getInstance().
-                queryEntryLinks(main.getCurrentEntry().getId());
-
-//        Set<EntryContent> oldLinks = main.getCurrentEntry().getLinks().stream().
-//                map(main::getByID).
-//                filter(Objects::nonNull).
-//                collect(Collectors.toSet());
+                queryEntryLinks(currentEntry.getId());
 
         Set<Integer> toRemove = new HashSet<>(oldLinkIds);
         toRemove.removeAll(newLinkIds);
@@ -58,62 +107,10 @@ public class LinkHandler {
         toRecord.removeAll(oldLinkIds);
 
         for (int id:toRemove) {
-            LexiconDatabase.getInstance().removeLink(id, main.getCurrentEntry().getId());
+            LexiconDatabase.getInstance().removeLink(id, currentEntry.getId());
         }
         for (int id:toRecord){
-            LexiconDatabase.getInstance().insertLink(id, main.getCurrentEntry().getId());
+            LexiconDatabase.getInstance().insertLink(id, currentEntry.getId());
         }
-    }
-
-    private void textFieldFocus(Boolean hasFocus) {
-        main.getMenuHandler().setAllowNavigation(!hasFocus);
-        if (hasFocus){
-
-            Stream<String> st = LexiconDatabase.getInstance().queryEntryLinks(main.getCurrentEntry().getId()).stream().
-                    map(main::getByID).
-                    map(EntryContent::getFirstLabel);
-
-            String linksLabel = Strings.toString(st, ", ");
-
-            main.linksTextArea.setText(linksLabel);
-            main.linksTextFlow.getChildren().clear();
-        }else{
-            updateLinks(main.linksTextArea.getText());
-            main.linksTextArea.clear();
-            setTextFlow();
-        }
-    }
-
-    private void switchToEdit(MouseEvent event) {
-        main.linksTextArea.requestFocus();
-        main.linksTextArea.end();
-
-        event.consume();
-    }
-
-    public void setTextFlow() {
-        EntryContent currentEntry = main.getCurrentEntry();
-        main.linksTextFlow.getChildren().clear();
-        if (currentEntry == null) {
-            return;
-        }
-
-        List<Hyperlink> toSort = new ArrayList<>();
-        for (Integer i : LexiconDatabase.getInstance().queryEntryLinks(main.getCurrentEntry().getId())) {
-            Optional<EntryContent> entry = LexiconDatabase.getInstance().queryEntry(i);
-            if (entry.isPresent()){
-                Hyperlink hyperlink = createLink(entry.get());
-                toSort.add(hyperlink);
-            }
-        }
-        toSort.sort((o1, o2) -> o1.getText().compareToIgnoreCase(o2.getText()));
-        toSort.forEach(hyperlink -> main.linksTextFlow.getChildren().add(hyperlink));
-    }
-
-    private Hyperlink createLink(EntryContent entry) {
-        String label = entry.getFirstLabel() + ", ";
-        Hyperlink link = new Hyperlink(label);
-        link.setOnAction(actionEvent -> main.entriesListView.getSelectionModel().select(entry));
-        return link;
     }
 }

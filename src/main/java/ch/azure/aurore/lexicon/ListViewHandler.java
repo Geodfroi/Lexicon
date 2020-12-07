@@ -81,6 +81,31 @@ public class ListViewHandler {
         }
     }
 
+    private void entrySelected(EntryContent value) {
+        if (value != null) {
+
+            Optional<String> db = main.getCurrentDB();
+            if (db.isEmpty())
+                return;
+
+            main.entriesListView.scrollTo(value);
+            main.setCurrentEntry(value);
+            main.getTextLoader().setTextFlow();
+            main.getLinksHandler().setTextFlow(main.getCurrentEntry());
+            String labelStr = EntryContent.toLabelStr(value.getLabels());
+            main.labelsTextField.setText(labelStr);
+
+            main.getImageHandler().displayImage();
+            main.getImageHandler().enableManipulateImageMenu(main.getCurrentEntry() .hasImage());
+
+            LocalSave.getInstance().setMapValue(CURRENT_ENTRIES, db.get(), value.getId());
+            main.getNavStack().add(value);
+
+            main.getMenuHandler().setCanGoToFormer(main.getNavStack().hasFormer());
+            main.getMenuHandler().setCanGoToNext(main.getNavStack().hasNext());
+        }
+    }
+
     public void refreshEntriesDisplay() {
         FilteredList<EntryContent> filteredList = new FilteredList<>(main.getEntries(), entryContent -> {
 
@@ -95,38 +120,16 @@ public class ListViewHandler {
 
         SortedList<EntryContent> sortedList = new SortedList<>(filteredList, (left, right) -> left.getFirstLabel().compareToIgnoreCase(right.getFirstLabel()));
         main.entriesListView.setItems(sortedList);
-        if (main.getCurrentDatabase() != null) {
-            Optional<Integer> currentID = LocalSave.getInstance().getMapInteger(CURRENT_ENTRIES, main.getCurrentDatabase());
+
+        Optional<String> db = main.getCurrentDB();
+        if (db.isPresent()) {
+            Optional<Integer> currentID = LocalSave.getInstance().getMapInteger(CURRENT_ENTRIES, db.get());
             if (currentID.isPresent()) {
                 Optional<EntryContent> result = sortedList.stream().
                         filter(e -> e.getId() == currentID.get()).findAny();
 
                 result.ifPresent(e -> main.entriesListView.getSelectionModel().select(e));
             }
-        }
-    }
-
-
-
-    private void entrySelected(EntryContent value) {
-        if (value != null) {
-
-            main.entriesListView.scrollTo(value);
-            main.setCurrentEntry(value);
-            main.getTextLoader().setTextFlow();
-            main.getLinksHandler().setTextFlow();
-            String labelStr = EntryContent.toLabelStr(value.getLabels());
-            main.labelsTextField.setText(labelStr);
-
-            main.getImageHandler().displayImage();
-            main.getImageHandler().enableManipulateImageMenu(main.getCurrentEntry() .hasImage());
-
-            String currentDatabase = main.getCurrentDatabase();
-            LocalSave.getInstance().setMapValue(CURRENT_ENTRIES, currentDatabase, value.getId());
-            main.getNavStack().add(value);
-
-            main.getMenuHandler().setCanGoToFormer(main.getNavStack().hasFormer());
-            main.getMenuHandler().setCanGoToNext(main.getNavStack().hasNext());
         }
     }
 }

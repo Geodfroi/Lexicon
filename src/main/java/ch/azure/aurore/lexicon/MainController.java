@@ -24,7 +24,7 @@ public class MainController implements Initializable {
 
     //region constants
 
-    public static final String FILE_CURRENT_PROPERTY = "currentFile";
+    private static final String SELECTED_DB_PROPERTY = "currentFile";
     public static final String FILES_LIST_PROPERTY = "filesList";
 
     //endregion
@@ -80,7 +80,6 @@ public class MainController implements Initializable {
     private MenuBarHandler menuHandler;
     private TextLoader textLoader;
 
-    private String currentDatabase;
     private EntryContent currentEntry;
     private ObservableList<EntryContent> entries;
 
@@ -89,10 +88,6 @@ public class MainController implements Initializable {
     //endregion
 
     //region accessors
-
-    String getCurrentDatabase() {
-        return currentDatabase;
-    }
 
     EntryContent getCurrentEntry() {
         return currentEntry;
@@ -126,10 +121,6 @@ public class MainController implements Initializable {
         return textLoader;
     }
 
-    void setCurrentDatabase(String str) {
-        this.currentDatabase = str;
-    }
-
     void setCurrentEntry(EntryContent value) {
         this.currentEntry = value;
     }
@@ -158,14 +149,12 @@ public class MainController implements Initializable {
 
     public void loadDatabase() {
 
-        Optional<String> query = LocalSave.getInstance().getString(FILE_CURRENT_PROPERTY);
-        if (query.isPresent()) {
+        Optional<String> db = getCurrentDB();
+        if (db.isPresent()) {
 
-            Optional<String> pathResult = LocalSave.getInstance().getMapString(FILES_LIST_PROPERTY, query.get());
+            Optional<String> pathResult = LocalSave.getInstance().getMapString(FILES_LIST_PROPERTY, db.get());
             if (pathResult.isPresent() && Files.exists(Path.of(pathResult.get()))) {
                 if (LexiconDatabase.getInstance().open(pathResult.get())) {
-
-                    this.currentDatabase = query.get();
                     entries = FXCollections.observableList(LexiconDatabase.getInstance().queryEntries());
                     listViewHandler.refreshEntriesDisplay();
                 }
@@ -175,9 +164,21 @@ public class MainController implements Initializable {
         getMenuHandler().reloadFileMenu();
     }
 
-
     public void quit() {
         LexiconDatabase.getInstance().close();
+    }
+
+    public Optional<String> getCurrentDB() {
+        return LocalSave.getInstance().getString(SELECTED_DB_PROPERTY);
+    }
+
+    public boolean setCurrentDB(String name) {
+        Optional<String> current = LocalSave.getInstance().getString(SELECTED_DB_PROPERTY);
+        if (current.isPresent() && current.get().equals(name)){
+            return false;
+        }
+        LocalSave.getInstance().set(SELECTED_DB_PROPERTY, name);
+        return true;
     }
 
     //endregion

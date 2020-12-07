@@ -49,9 +49,6 @@ public class LabelHandler {
                     })).
                     collect(Collectors.toSet());
             entry.setLabels(validLabels);
-
-            //if (entry.save()){ ;
-            // main.entriesListView.getSelectionModel().getSelectedItem().
         }
         String labelStr = EntryContent.toLabelStr(entry.getLabels());
         main.labelsTextField.setText(labelStr);

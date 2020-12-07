@@ -26,6 +26,7 @@ public class MenuBarHandler {
     private final MenuItem selectDatabaseMenu;
     private final MenuItem clearDataMenu;
     private final MenuItem closeMenu;
+    private final MenuItem useDummyMenu;
     private boolean canGoToFormer;
     private boolean canGoToNext;
     private boolean allowNavigation = true;
@@ -34,12 +35,15 @@ public class MenuBarHandler {
         this.main=main;
 
         //region file menu
-        selectDatabaseMenu = new MenuItem("Select Database");
-        selectDatabaseMenu.setOnAction(actionEvent -> openDiskDatabase());
+
         clearDataMenu = new MenuItem("Reset application");
         clearDataMenu.setOnAction(actionEvent -> clearData());
         closeMenu = new MenuItem("Close application");
         closeMenu.setOnAction(actionEvent -> Platform.exit());
+        selectDatabaseMenu = new MenuItem("Select database");
+        selectDatabaseMenu.setOnAction(actionEvent -> openDiskDatabase());
+        useDummyMenu = new MenuItem("Use dummy database");
+        useDummyMenu.setOnAction(actionEvent -> loadDummyDB());
 
         //endregion
 
@@ -78,32 +82,15 @@ public class MenuBarHandler {
         //endregion
     }
 
-    private void refreshNavigationMenu() {
-        if (allowNavigation){
-            main.lastMenuItem.setDisable(!canGoToFormer);
-            main.nextMenuItem.setDisable(!canGoToNext);
-        }
-        else{
-            main.lastMenuItem.setDisable(true);
-            main.nextMenuItem.setDisable(true);
-        }
-
-    }
-
-    public void setAllowNavigation(boolean val) {
-        allowNavigation = val;
-        refreshNavigationMenu();
-    }
-
     public void clearData() {
         LexiconDatabase.getInstance().close();
         LocalSave.getInstance().clear();
 
-        main.setCurrentDatabase(null);
         main.setCurrentEntry(null);
 
         reloadFileMenu();
-        main.entriesListView.getItems().clear();
+        if (main.getEntries() != null)
+            main.getEntries().clear();
 
         main.linksTextFlow.getChildren().clear();
         main.contentTextFlow.getChildren().clear();
@@ -141,6 +128,36 @@ public class MenuBarHandler {
         }
     }
 
+    private void loadDummyDB() {
+        for (String path:LexiconDatabase.populateDummyDB()) {
+            File file = new File(path);
+            LocalSave.getInstance().setMapValue(MainController.FILES_LIST_PROPERTY, file.getName(), path);
+        }
+        reloadFileMenu();
+    }
+
+    private void navStack(Directions dir) {
+        EntryContent entry = main.getNavStack().navigateStack(dir);
+        main.entriesListView.getSelectionModel().select(entry);
+    }
+
+    private void refreshNavigationMenu() {
+        if (allowNavigation){
+            main.lastMenuItem.setDisable(!canGoToFormer);
+            main.nextMenuItem.setDisable(!canGoToNext);
+        }
+        else{
+            main.lastMenuItem.setDisable(true);
+            main.nextMenuItem.setDisable(true);
+        }
+
+    }
+
+    public void setAllowNavigation(boolean val) {
+        allowNavigation = val;
+        refreshNavigationMenu();
+    }
+
     public void setCanGoToFormer(boolean val) {
         canGoToFormer = val;
         refreshNavigationMenu();
@@ -154,11 +171,6 @@ public class MenuBarHandler {
 
     public boolean IsShowEmptyEntries() {
         return main.showEmptyCheckMenu.isSelected();
-    }
-
-    private void navStack(Directions dir) {
-        EntryContent entry = main.getNavStack().navigateStack(dir);
-        main.entriesListView.getSelectionModel().select(entry);
     }
 
     private void openDiskDatabase() {
@@ -183,9 +195,10 @@ public class MenuBarHandler {
         main.fileMenu.getItems().add(selectDatabaseMenu);
         main.fileMenu.getItems().add(clearDataMenu);
 
-        Set<String> set = LocalSave.getInstance().getMapValues(MainController.FILES_LIST_PROPERTY).keySet();
+        Set<String> set = LocalSave.getInstance().
+                getMapValues(MainController.FILES_LIST_PROPERTY).keySet();
 
-        if (set.size() > 0 && main.getCurrentDatabase() != null)
+        if (set.size() > 0)
         {
             main.fileMenu.getItems().add(new SeparatorMenuItem());
 
@@ -194,30 +207,34 @@ public class MenuBarHandler {
                     map(CheckMenuItem::new).
                     collect(Collectors.toList());
 
-            list.forEach(checkMenuItem -> {
-                if (main.getCurrentDatabase().equals(checkMenuItem.getText()))
-                    checkMenuItem.setSelected(true);
+            Optional<String> currentDb = main.getCurrentDB();
+            for (CheckMenuItem checkMenuItem : list) {
+                main.fileMenu.getItems().add(checkMenuItem);
 
                 checkMenuItem.setOnAction(actionEvent -> {
-                    for (CheckMenuItem menuItem: list) {
+                    for (CheckMenuItem menuItem : list) {
                         menuItem.setSelected(menuItem == checkMenuItem);
                     }
-                    if (!main.getCurrentDatabase().equals(checkMenuItem.getText()))
-                        selectDatabase(checkMenuItem.getText());
+                    selectDatabase(checkMenuItem.getText());
                 });
-                main.fileMenu.getItems().add(checkMenuItem);
-            });
+
+                if (currentDb.isPresent() && currentDb.get().equals(checkMenuItem.getText()))
+                    checkMenuItem.setSelected(true);
+            }
 
             main.fileMenu.getItems().add(new SeparatorMenuItem());
+        }
+        else{
+            main.fileMenu.getItems().add(useDummyMenu);
         }
 
         main.fileMenu.getItems().add(closeMenu);
     }
 
     private void selectDatabase(String name) {
-        main.setCurrentDatabase(name);
-        LocalSave.getInstance().set(MainController.FILE_CURRENT_PROPERTY, name);
-        main.getNavStack().clear();
-        main.loadDatabase();
+        if (main.setCurrentDB(name)){
+            main.getNavStack().clear();
+            main.loadDatabase();
+        }
     }
 }
