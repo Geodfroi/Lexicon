@@ -4,8 +4,8 @@ import ch.azure.aurore.Strings.Strings;
 import ch.azure.aurore.lexiconDB.EntryContent;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -24,6 +24,9 @@ public class LabelHandler {
         main.labelsTextField.focusedProperty().addListener((observableValue, aBoolean, t1) -> {
             if (!t1)
                 validateLabels();
+
+            // disable nav while navigating
+            main.getMenuHandler().setAllowNavigation(!t1);
         });
     }
 
@@ -38,17 +41,19 @@ public class LabelHandler {
                     map(Strings::camel).
                     collect(Collectors.toMap(s -> s, LabelHandler::getSearchPattern));
 
-            List<String> validLabels = patterns.keySet().stream().
+            Set<String> validLabels = patterns.keySet().stream().
                     filter(s -> main.getEntries().stream().noneMatch(entryContent -> {
-                        Matcher matcher = patterns.get(s).matcher(entryContent.getLabels());
+                        String labelStr = EntryContent.toLabelStr(entryContent.getLabels());
+                        Matcher matcher = patterns.get(s).matcher(labelStr);
                         return entryContent != entry && matcher.matches();
                     })).
-                    collect(Collectors.toList());
+                    collect(Collectors.toSet());
             entry.setLabels(validLabels);
 
             //if (entry.save()){ ;
             // main.entriesListView.getSelectionModel().getSelectedItem().
         }
-        main.labelsTextField.setText(entry.getLabels());
+        String labelStr = EntryContent.toLabelStr(entry.getLabels());
+        main.labelsTextField.setText(labelStr);
     }
 }

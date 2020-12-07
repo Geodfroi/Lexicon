@@ -4,7 +4,6 @@ import ch.azure.aurore.IO.API.LocalSave;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.IEntryListener;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
-import javafx.beans.value.ChangeListener;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.scene.control.*;
@@ -23,7 +22,8 @@ class EntryListCell extends ListCell<EntryContent> implements IEntryListener {
             setText("");
         else{
             item.addListener(this);
-            setText(item.getLabels());
+            String txt = EntryContent.toLabelStr(item.getLabels());
+            setText(txt);
             setTextFill(Color.BLUE.darker());
         }
     }
@@ -44,9 +44,7 @@ public class ListViewHandler {
     public ListViewHandler(MainController main) {
         this.main = main;
 
-        ChangeListener<EntryContent> listViewListener = (observableValue, oldValue, newValue) -> entrySelected(newValue);
-        main.entriesListView.getSelectionModel().selectedItemProperty().addListener(listViewListener);
-
+        main.entriesListView.getSelectionModel().selectedItemProperty().addListener((observableValue, entryContent, t1) -> entrySelected(t1));
         main.entriesListView.setCellFactory(entryContentListView -> new EntryListCell());
 
         //region context menu
@@ -60,7 +58,7 @@ public class ListViewHandler {
         //region search box
         main.searchTextField.textProperty().addListener((observableValue, s, t1) -> {
             filterStr = t1;
-            showEntriesList();
+            refreshEntriesDisplay();
         });
         //endregion
     }
@@ -77,23 +75,25 @@ public class ListViewHandler {
 
                 if (LexiconDatabase.getInstance().removeEntry(item)) {
                     main.getEntries().remove(item);
+                  //  main.refresh();
                 }
             }
         }
     }
 
-    public void showEntriesList() {
-
+    public void refreshEntriesDisplay() {
         FilteredList<EntryContent> filteredList = new FilteredList<>(main.getEntries(), entryContent -> {
 
             if (!main.getMenuHandler().IsShowEmptyEntries() && !entryContent.hasContent())
                 return false;
 
             Pattern pattern = Pattern.compile("^.*" + filterStr + ".*$");
-            Matcher matcher = pattern.matcher(entryContent.getLabels());
+            String labelStr = EntryContent.toLabelStr(entryContent.getLabels());
+            Matcher matcher = pattern.matcher(labelStr);
             return matcher.matches();
         });
-        SortedList<EntryContent> sortedList = new SortedList<>(filteredList, (left, right) -> left.getLabels().compareToIgnoreCase(right.getLabels()));
+
+        SortedList<EntryContent> sortedList = new SortedList<>(filteredList, (left, right) -> left.getFirstLabel().compareToIgnoreCase(right.getFirstLabel()));
         main.entriesListView.setItems(sortedList);
         if (main.getCurrentDatabase() != null) {
             Optional<Integer> currentID = LocalSave.getInstance().getMapInteger(CURRENT_ENTRIES, main.getCurrentDatabase());
@@ -106,26 +106,27 @@ public class ListViewHandler {
         }
     }
 
+
+
     private void entrySelected(EntryContent value) {
         if (value != null) {
-            EntryContent currentEntry = main.getCurrentEntry();
-            if (currentEntry != null)
-                currentEntry.saveEntry();
 
+            main.entriesListView.scrollTo(value);
             main.setCurrentEntry(value);
             main.getTextLoader().setTextFlow();
             main.getLinksHandler().setTextFlow();
-            main.labelsTextField.setText(value.getLabels());
+            String labelStr = EntryContent.toLabelStr(value.getLabels());
+            main.labelsTextField.setText(labelStr);
 
             main.getImageHandler().displayImage();
-            main.getImageHandler().enableManipulateImageMenu(currentEntry != null && currentEntry.hasImage());
+            main.getImageHandler().enableManipulateImageMenu(main.getCurrentEntry() .hasImage());
 
             String currentDatabase = main.getCurrentDatabase();
             LocalSave.getInstance().setMapValue(CURRENT_ENTRIES, currentDatabase, value.getId());
             main.getNavStack().add(value);
 
-            main.getMenuHandler().enableLastMenu(main.getNavStack().hasFormer());
-            main.getMenuHandler().enableNextMenu(main.getNavStack().hasNext());
+            main.getMenuHandler().setCanGoToFormer(main.getNavStack().hasFormer());
+            main.getMenuHandler().setCanGoToNext(main.getNavStack().hasNext());
         }
     }
 }

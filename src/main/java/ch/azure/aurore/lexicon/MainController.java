@@ -15,7 +15,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.text.TextFlow;
 
 import java.net.URL;
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
@@ -49,9 +50,11 @@ public class MainController implements Initializable {
     @FXML
     public MenuItem createEntryMenu;
     @FXML
-    public CheckMenuItem fullScreenCheckMenu;
-    @FXML
     public MenuItem fullScreenMenu;
+    @FXML
+    public StackPane scrollPane;
+    @FXML
+    public ScrollPane textFlow_scrollPane;
     @FXML
     ListView<EntryContent> entriesListView;
     @FXML
@@ -61,7 +64,7 @@ public class MainController implements Initializable {
     @FXML
     public TextField labelsTextField;
     @FXML
-    public TextField linksTextField;
+    public TextArea linksTextArea;
     @FXML
     public CheckMenuItem showEmptyCheckMenu;
     @FXML
@@ -135,6 +138,14 @@ public class MainController implements Initializable {
 
     //region methods
 
+    public EntryContent getByID(Integer id) {
+        Optional<EntryContent> result = entries.stream().
+                filter(e -> id.equals(e.getId())).
+                findAny();
+
+        return result.orElse(null);
+    }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         textLoader = new TextLoader(this);
@@ -145,30 +156,29 @@ public class MainController implements Initializable {
         imageHandler = new ImageHandler(this);
     }
 
-    public void reloadEntries() {
+    public void loadDatabase() {
 
         Optional<String> query = LocalSave.getInstance().getString(FILE_CURRENT_PROPERTY);
         if (query.isPresent()) {
-            this.currentDatabase = query.get();
-            Optional<String> pathResult = LocalSave.getInstance().getMapString(FILES_LIST_PROPERTY, currentDatabase);
-            if (pathResult.isPresent() && LexiconDatabase.getInstance().open(pathResult.get())){
 
-                List<EntryContent> list = LexiconDatabase.getInstance().queryEntries();
-                entries = FXCollections.observableList(list);
-                listViewHandler.showEntriesList();
+            Optional<String> pathResult = LocalSave.getInstance().getMapString(FILES_LIST_PROPERTY, query.get());
+            if (pathResult.isPresent() && Files.exists(Path.of(pathResult.get()))) {
+                if (LexiconDatabase.getInstance().open(pathResult.get())) {
+
+                    this.currentDatabase = query.get();
+                    entries = FXCollections.observableList(LexiconDatabase.getInstance().queryEntries());
+                    listViewHandler.refreshEntriesDisplay();
+                }
             }
         }
+
         getMenuHandler().reloadFileMenu();
     }
 
-    public void quit() {
-        if (currentEntry != null)
-            currentEntry.saveEntry();
 
+    public void quit() {
         LexiconDatabase.getInstance().close();
     }
-
-
 
     //endregion
 }

@@ -53,9 +53,7 @@ public class ImageHandler {
             Optional<ButtonType> result1 = alert.showAndWait();
             if (result1.isPresent() && result1.get() == ButtonType.OK) {
                 main.getCurrentEntry().setImage(null);
-             //   if (LexiconDatabase.getInstance().updateEntry(main.getCurrentEntry())){
                 main.imageView.setImage(defaultImage);
-            //    }
             }
             enableManipulateImageMenu(main.getCurrentEntry().hasImage());
         });

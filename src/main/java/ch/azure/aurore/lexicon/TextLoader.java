@@ -2,7 +2,6 @@ package ch.azure.aurore.lexicon;
 
 import ch.azure.aurore.lexiconDB.EntryContent;
 import javafx.scene.control.Hyperlink;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.text.Text;
 
@@ -19,9 +18,10 @@ public class TextLoader {
     public TextLoader(MainController main) {
         this.main = main;
 
-        main.contentTextFlow.setOnMouseClicked(mouseEvent -> {
+        main.textFlow_scrollPane.setOnMouseClicked(mouseEvent -> {
             if(mouseEvent.getButton().equals(MouseButton.PRIMARY) && mouseEvent.getClickCount() == 2){
                 switchToEdit();
+                mouseEvent.consume();
             }
         });
         main.contentTextArea.focusedProperty().addListener((observableValue, aBoolean, t1) -> textAreaFocus(t1));
@@ -30,12 +30,12 @@ public class TextLoader {
     private void textAreaFocus(Boolean hasFocus) {
         if (hasFocus){
             main.contentTextArea.setText(main.getCurrentEntry().getContent());
-            main.contentTextFlow.getChildren().clear();
+           // main.contentTextFlow.getChildren().clear();
+            main.textFlow_scrollPane.setVisible(false);
         }else{
             main.getCurrentEntry().setContent(main.contentTextArea.getText());
-            //main.getCurrentEntry().save();
-
             main.contentTextArea.clear();
+            main.textFlow_scrollPane.setVisible(true);
 
             setTextFlow();
         }
@@ -53,7 +53,7 @@ public class TextLoader {
         List<TextLink>links = new ArrayList<>();
 
         for (EntryContent entry: main.getEntries()) {
-            for (String label: entry.getLabels().split(", *"))
+            for (String label: entry.getLabels())
             {
                 Pattern pattern = Pattern.compile("\\b("+label + "[sx]?)\\b");
 
@@ -123,6 +123,6 @@ class TextLink{
 
     @Override
     public String toString() {
-        return entry.getLabels() + "@"+ startIndex;
+        return entry.getFirstLabel() + "@"+ startIndex;
     }
 }

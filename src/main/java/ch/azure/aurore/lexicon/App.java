@@ -43,11 +43,9 @@ public class App extends Application {
         stage.setTitle(APP_NAME);
 
         mainController = fxmlLoader.getController();
-        mainController.reloadEntries();
+        mainController.loadDatabase();
 
         stage.show();
-    //    stage.setMaximized(false);
-       // stage.setFullScreen(true);
         stage.widthProperty().addListener((observableValue, number, t1) -> {
             ArrayList<Double> size1 = new ArrayList<>(Arrays.asList(t1.doubleValue(), stage.getHeight()));
             LocalSave.getInstance().setDoubles(WINDOW_SIZE, size1);

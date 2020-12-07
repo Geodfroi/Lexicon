@@ -26,6 +26,9 @@ public class MenuBarHandler {
     private final MenuItem selectDatabaseMenu;
     private final MenuItem clearDataMenu;
     private final MenuItem closeMenu;
+    private boolean canGoToFormer;
+    private boolean canGoToNext;
+    private boolean allowNavigation = true;
 
     public MenuBarHandler(MainController main) {
         this.main=main;
@@ -50,7 +53,7 @@ public class MenuBarHandler {
         result.ifPresent(aBoolean -> main.showEmptyCheckMenu.setSelected(aBoolean));
         main.showEmptyCheckMenu.setOnAction(actionEvent -> {
             LocalSave.getInstance().set(SHOW_EMPTY_PROPERTY, main.showEmptyCheckMenu.isSelected());
-            main.getListViewHandler().showEntriesList();
+            main.getListViewHandler().refreshEntriesDisplay();
         });
 
         Optional<Boolean> fullscreen = LocalSave.getInstance().getBoolean(FULLSCREEN_PROPERTY);
@@ -66,7 +69,30 @@ public class MenuBarHandler {
         //region navigation menu
         main.lastMenuItem.setOnAction(actionEvent -> navStack(Directions.backward));
         main.nextMenuItem.setOnAction(actionEvent -> navStack(Directions.forward));
+
+        main.root.setOnMouseClicked(mouseEvent -> {
+            main.root.requestFocus();
+            setAllowNavigation(true);
+        });
+
         //endregion
+    }
+
+    private void refreshNavigationMenu() {
+        if (allowNavigation){
+            main.lastMenuItem.setDisable(!canGoToFormer);
+            main.nextMenuItem.setDisable(!canGoToNext);
+        }
+        else{
+            main.lastMenuItem.setDisable(true);
+            main.nextMenuItem.setDisable(true);
+        }
+
+    }
+
+    public void setAllowNavigation(boolean val) {
+        allowNavigation = val;
+        refreshNavigationMenu();
     }
 
     public void clearData() {
@@ -77,7 +103,7 @@ public class MenuBarHandler {
         main.setCurrentEntry(null);
 
         reloadFileMenu();
-        main.getEntries().clear();
+        main.entriesListView.getItems().clear();
 
         main.linksTextFlow.getChildren().clear();
         main.contentTextFlow.getChildren().clear();
@@ -94,7 +120,7 @@ public class MenuBarHandler {
 
         FXMLLoader fxmlLoader = new FXMLLoader();
         fxmlLoader.setLocation(getClass().getResource("NewEntry.fxml"));
-        NewEntryController dialogController = new NewEntryController(main.getEntries());
+        NewEntryController dialogController = new NewEntryController(main);
         fxmlLoader.setController(dialogController);
 
         try {
@@ -110,18 +136,20 @@ public class MenuBarHandler {
 
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK){
-            EntryContent item = dialogController.createItem();
-            main.getEntries().add(item);
-            System.out.println("adding to list");
+            var item = dialogController.createItem();
+            item.ifPresent(entryContent -> main.entriesListView.getItems().add(entryContent));
         }
     }
 
-    public void enableLastMenu(boolean hasFormer) {
-        main.lastMenuItem.setDisable(!hasFormer);
+    public void setCanGoToFormer(boolean val) {
+        canGoToFormer = val;
+        refreshNavigationMenu();
     }
 
-    public void enableNextMenu(boolean hasNext) {
-        main.nextMenuItem.setDisable(!hasNext);
+    public void setCanGoToNext(boolean val) {
+        canGoToNext = val;
+        refreshNavigationMenu();
+        main.nextMenuItem.setDisable(!val);
     }
 
     public boolean IsShowEmptyEntries() {
@@ -141,8 +169,9 @@ public class MenuBarHandler {
         if (file != null){
             String databasePath = file.getAbsolutePath();
             if (LexiconDatabase.getInstance().open(databasePath)){
-                selectDatabase(file.getName());
-                LocalSave.getInstance().setMapValue(MainController.FILES_LIST_PROPERTY, main.getCurrentDatabase(), databasePath);
+                String name = file.getName();
+                LocalSave.getInstance().setMapValue(MainController.FILES_LIST_PROPERTY, name, databasePath);
+                selectDatabase(name);
             }
             else
                 reloadFileMenu();
@@ -189,6 +218,6 @@ public class MenuBarHandler {
         main.setCurrentDatabase(name);
         LocalSave.getInstance().set(MainController.FILE_CURRENT_PROPERTY, name);
         main.getNavStack().clear();
-        main.reloadEntries();
+        main.loadDatabase();
     }
 }
