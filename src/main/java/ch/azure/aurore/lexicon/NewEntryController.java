@@ -1,8 +1,8 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.Strings.Strings;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
+import ch.azure.aurore.strings.Strings;
 import javafx.beans.value.ChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -31,7 +31,7 @@ public class NewEntryController implements Initializable {
     private final List<EntryContent> entries;
 
     public NewEntryController(MainController main) {
-        entries = main.getEntries();
+        entries = main.getDatabaseAccess().getEntries();
     }
 
     //region methods

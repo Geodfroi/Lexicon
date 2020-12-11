@@ -3,10 +3,10 @@ package ch.azure.aurore.lexicon;
 import ch.azure.aurore.IO.API.LocalSave;
 import ch.azure.aurore.IO.API.Settings;
 import ch.azure.aurore.IO.exceptions.MissingSettingException;
-import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -21,12 +21,13 @@ import java.util.Optional;
 public class App extends Application {
 
     private static final String APP_NAME = "Lexicon";
+    private static final String APP_ICON = "file:icon.png";
     private static final String WINDOW_SIZE = "windowSize";
 
     private static App instance;
 
     private MainController mainController;
-    private Stage stage;
+    private Scene scene;
 
     public static App getInstance() {
         return instance;
@@ -34,17 +35,19 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+
         instance = this;
-        this.stage = stage;
         FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("Main.fxml"));
         List<Integer> size = getSize();
 
-        Scene scene = new Scene(fxmlLoader.load(), size.get(0), size.get(1));
+        scene = new Scene(fxmlLoader.load(), size.get(0), size.get(1));
         stage.setScene(scene);
         stage.setTitle(APP_NAME);
 
+        stage.getIcons().add(new Image(APP_ICON));
+
         mainController = fxmlLoader.getController();
-        mainController.loadDatabase();
+        mainController.start();
 
         stage.show();
         stage.widthProperty().addListener((observableValue, number, t1) -> {
@@ -80,7 +83,7 @@ public class App extends Application {
         super.stop();
     }
 
-    Stage getStage() {
-        return stage;
+    public Scene getScene() {
+        return scene;
     }
 }

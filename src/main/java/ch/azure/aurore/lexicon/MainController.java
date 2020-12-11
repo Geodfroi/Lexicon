@@ -1,13 +1,10 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.IO.API.LocalSave;
-import ch.azure.aurore.Lists.NavStack;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -15,171 +12,136 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.text.TextFlow;
 
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
 
-    //region constants
-
-    private static final String SELECTED_DB_PROPERTY = "currentFile";
-    public static final String FILES_LIST_PROPERTY = "filesList";
-
-    //endregion
 
     //region fields
-
     //region FXML fields
-
     @FXML
-    public BorderPane root;
+    private MenuBar menuBar;
     @FXML
-    public Menu fileMenu;
+    private BorderPane root;
     @FXML
-    public MenuItem lastMenuItem;
+    private Menu fileMenu;
     @FXML
-    public MenuItem nextMenuItem;
+    private MenuItem lastMenuItem;
     @FXML
-    public MenuItem deleteEntryMenu;
+    private MenuItem nextMenuItem;
     @FXML
-    public ImageView imageView;
+    private MenuItem deleteEntryMenu;
     @FXML
-    public StackPane imageStackPane;
+    private ImageView imageView;
     @FXML
-    public MenuItem createEntryMenu;
+    private  StackPane imageStackPane;
     @FXML
-    public MenuItem fullScreenMenu;
+    private  MenuItem createEntryMenu;
     @FXML
-    public StackPane scrollPane;
+    private  MenuItem fullScreenMenu;
     @FXML
-    public ScrollPane textFlow_scrollPane;
+    private StackPane scrollPane;
     @FXML
-    ListView<EntryContent> entriesListView;
+    private ScrollPane textFlow_scrollPane;
     @FXML
-    public TextArea contentTextArea;
+    private ListView<EntryContent> entriesListView;
     @FXML
-    public TextFlow contentTextFlow;
+    private TextArea contentTextArea;
     @FXML
-    public TextField labelsTextField;
+    private TextFlow contentTextFlow;
     @FXML
-    public TextArea linksTextArea;
+    private TextField labelsTextField;
     @FXML
-    public CheckMenuItem showEmptyCheckMenu;
+    private TextArea linksTextArea;
     @FXML
-    public TextField searchTextField;
+    private CheckMenuItem showEmptyCheckMenu;
     @FXML
-    public TextFlow linksTextFlow;
-
+    private TextField searchTextField;
+    @FXML
+    private TextFlow linksTextFlow;
     //endregion
 
-    private ImageHandler imageHandler;
-    private LinkHandler linkHandler;
     private ListViewHandler listViewHandler;
     private MenuBarHandler menuHandler;
-    private TextLoader textLoader;
+    private DatabaseAccess databaseAccess;
 
-    private EntryContent currentEntry;
-    private ObservableList<EntryContent> entries;
-
-    private final NavStack<EntryContent> navStack = new NavStack<>();
-
+    private NavigationHandler navigationHandler;
+    private FieldsHandler fieldsHandler;
     //endregion
 
     //region accessors
-
-    EntryContent getCurrentEntry() {
-        return currentEntry;
-    }
-
-    ObservableList<EntryContent> getEntries() {
-        return entries;
-    }
-
-    ImageHandler getImageHandler() {
-        return imageHandler;
-    }
-
-    LinkHandler getLinksHandler() {
-        return linkHandler;
-    }
-
-    ListViewHandler getListViewHandler() {
+    public ListViewHandler getListViewHandler() {
         return listViewHandler;
     }
 
-    MenuBarHandler getMenuHandler() {
+    public MenuBarHandler getMenuHandler() {
         return menuHandler;
     }
 
-    NavStack<EntryContent> getNavStack() {
-        return navStack;
+    public NavigationHandler getNavigation() {
+        return navigationHandler;
     }
 
-    TextLoader getTextLoader() {
-        return textLoader;
+    public FieldsHandler getFieldsHandler() {
+        return fieldsHandler;
     }
 
-    void setCurrentEntry(EntryContent value) {
-        this.currentEntry = value;
+    public DatabaseAccess getDatabaseAccess() {
+        return databaseAccess;
     }
-
     //endregion
 
     //region methods
-
-    public EntryContent getByID(Integer id) {
-        Optional<EntryContent> result = entries.stream().
-                filter(e -> id.equals(e.getId())).
-                findAny();
-
-        return result.orElse(null);
-    }
-
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        textLoader = new TextLoader(this);
-        linkHandler = new LinkHandler(this);
-        new LabelHandler(this);
-        listViewHandler = new ListViewHandler(this);
-        menuHandler = new MenuBarHandler(this);
-        imageHandler = new ImageHandler(this);
-    }
-
-    public void loadDatabase() {
-
-        Optional<String> db = getCurrentDB();
-        if (db.isPresent()) {
-
-            Optional<String> pathResult = LocalSave.getInstance().getMapString(FILES_LIST_PROPERTY, db.get());
-            if (pathResult.isPresent() && Files.exists(Path.of(pathResult.get()))) {
-                if (LexiconDatabase.getInstance().open(pathResult.get())) {
-                    entries = FXCollections.observableList(LexiconDatabase.getInstance().queryEntries());
-                    listViewHandler.refreshEntriesDisplay();
-                }
-            }
-        }
-
-        getMenuHandler().reloadFileMenu();
+        listViewHandler = new ListViewHandler(this, entriesListView);
+        menuHandler = new MenuBarHandler(this, menuBar);
+        databaseAccess = new DatabaseAccess(this);
+        navigationHandler = new NavigationHandler(this);
+        fieldsHandler = new FieldsHandler(this,
+                labelsTextField,
+                linksTextArea,
+                contentTextArea,
+                imageView);
     }
 
     public void quit() {
         LexiconDatabase.getInstance().close();
     }
 
-    public Optional<String> getCurrentDB() {
-        return LocalSave.getInstance().getString(SELECTED_DB_PROPERTY);
+    public void start() {
+        databaseAccess.loadDatabase();
+        menuHandler.reloadFileMenu();
     }
-
-    public boolean setCurrentDB(String name) {
-        Optional<String> current = LocalSave.getInstance().getString(SELECTED_DB_PROPERTY);
-        if (current.isPresent() && current.get().equals(name)){
-            return false;
-        }
-        LocalSave.getInstance().set(SELECTED_DB_PROPERTY, name);
-        return true;
-    }
-
-    //endregion
 }
+
+//    public EntryContent getCurrentEntry() {
+//        if (entries == null)
+//            return null;
+//
+//        Optional<String> db = getCurrentDB();
+//        if (db.isPresent()){
+//            Optional<Integer> val = LocalSave.getInstance().
+//                    getMapInteger(SELECTED_ENTRIES, db.get());
+//            if (val.isPresent()) {
+//                return getByID(val.get());
+//            }
+//        }
+//        return null;
+//    }
+
+//    public boolean setCurrentEntry(EntryContent value) {
+//        Optional<String> db = getCurrentDB();
+//        if (db.isPresent()) {
+//            if (value == null){
+//                LocalSave.getInstance().setMapValue(SELECTED_ENTRIES, db.get(), value.getId());
+//            }
+//            else{
+//                LocalSave.getInstance().removeMapValue(SELECTED_ENTRIES, db.get());
+//            }
+//            return true;
+//        }
+//        return false;
+//    }
+
+//endregion
