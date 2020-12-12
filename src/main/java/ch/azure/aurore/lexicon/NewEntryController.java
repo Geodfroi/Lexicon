@@ -4,6 +4,7 @@ import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import ch.azure.aurore.strings.Strings;
 import javafx.beans.value.ChangeListener;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ButtonType;
@@ -13,11 +14,16 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 
 import java.net.URL;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class NewEntryController implements Initializable {
+
+    private final MainController main;
     @FXML
     public TextArea contentTextArea;
     @FXML
@@ -25,38 +31,68 @@ public class NewEntryController implements Initializable {
     @FXML
     public VBox root;
 
-    private ChangeListener<String> labelEventListener;
+    private final String labelStr;
+    private final ObservableList<EntryContent> entries;
+    private Set<String> labels = new HashSet<>();
 
-    private Set<String> labels;
-    private final List<EntryContent> entries;
-
-    public NewEntryController(MainController main) {
-        entries = main.getDatabaseAccess().getEntries();
-    }
-
-    //region methods
-    public Optional<EntryContent> createItem() {
-        String content = contentTextArea.getText();
-        return LexiconDatabase.getInstance().insertEntry(content, this.labels);
+    public NewEntryController(MainController main, String label) {
+        this.main = main;
+        this.entries = main.getDatabaseAccess().getEntries();
+        this.labelStr = label;
     }
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        labelEventListener = (observableValue, s, t1) -> validate();
-        labelTextField.textProperty().addListener(labelEventListener);
-        labelTextField.focusedProperty().addListener((observableValue, aBoolean, t1) -> {
-            if (!t1)
-                setLabels();
-        });
+        labelTextField.setText(labelStr);
+
+        //labelTextField.focusedProperty().addListener((observableValue, aBoolean, t1) -> focusChanged(t1));
+        //            switchTextEvent(false);
+        //            labelTextField.setText(labelStr);
+        //            switchTextEvent(true);
+        ChangeListener<String> textChanged = (observableValue, s, t1) -> {
+            validate();
+//            switchTextEvent(false);
+//            labelTextField.setText(labelStr);
+//            switchTextEvent(true);
+        };
+        labelTextField.textProperty().addListener(textChanged);
+      //  switchTextEvent(true);
+    }
+
+//    private void switchTextEvent(boolean val) {
+//        if (val) labelTextField.textProperty().addListener(textChanged);
+//        else labelTextField.textProperty().removeListener(textChanged);
+//    }
+
+    private void validate() {
+        String str = labelTextField.getText();
+        labels = new HashSet<>();
+        if (Strings.isNullOrEmpty(str)){
+            enableOK(false);
+        }
+
+        if (str.contains(" ")){
+            enableOK(false);
+            return;
+        }
+
+        for (var label:str.split(", *")) {
+            if (matchExistingLabel(label)){
+                enableOK(false);
+                return;
+            }
+            labels.add(str);
+        }
+        enableOK(true);
+       // labelStr = Strings.toString(labels, String::compareToIgnoreCase);
     }
 
     private boolean matchExistingLabel(String label) {
+
         if (Strings.isNullOrEmpty(label))
             return true;
 
         String regex ="^.*\\b" + label + "?\\b.*$";
-        System.out.flush();
-        System.out.println(regex);
         Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 
         for (EntryContent entry: entries) {
@@ -66,34 +102,34 @@ public class NewEntryController implements Initializable {
                 return true;
             }
         }
-
         return false;
     }
 
-    private void setLabels() {
-        labelTextField.textProperty().removeListener(labelEventListener);
-        labelTextField.setText(labelTextField.getText());
-        labelTextField.textProperty().addListener(labelEventListener);
-    }
-
-    private void validate() {
-        labels = new HashSet<>();
-        String str = labelTextField.getText();
-        boolean invalid = str == null || str.isBlank() || str.isBlank();
-        if (!invalid) {
-            String[] labels = labelTextField.getText().split(", *");
-            for (String label:labels) {
-                if (matchExistingLabel(label))
-                {
-                    invalid = true;
-                    break;
-                }
-                this.labels.add(label);
-            }
-        }
-
+    private void enableOK(boolean val) {
         DialogPane dialogPane = (DialogPane) root.getParent();
-        dialogPane.lookupButton(ButtonType.OK).setDisable(invalid);
+        dialogPane.lookupButton(ButtonType.OK).setDisable(!val);
+
+        if (val){
+            labelTextField.setStyle("-fx-text-fill: black");
+        }else {
+            labelTextField.setStyle("-fx-text-fill: red");
+        }
     }
-    //endregion
+
+    public void createItem() {
+        String content = Strings.isNullOrEmpty(contentTextArea.getText()) ? "" : contentTextArea.getText();
+        Optional<Integer> id = LexiconDatabase.getInstance().insertEntry(labels, content);
+        if (id.isPresent()){
+            var entry = new EntryContent(id.get(), labels, content);
+            entries.add(entry);
+            main.getNavigation().selectEntry(entry, true);
+        }
+    }
 }
+
+//    //region methods
+//    public Optional<EntryContent> createItem() {
+//        String content = contentTextArea.getText();
+//        return LexiconDatabase.getInstance().insertEntry(content, this.labels);
+//    }
+

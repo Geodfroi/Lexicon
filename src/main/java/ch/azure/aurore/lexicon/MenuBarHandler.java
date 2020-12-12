@@ -1,10 +1,14 @@
 package ch.azure.aurore.lexicon;
 
+import ch.azure.aurore.IO.API.LocalSave;
+import ch.azure.aurore.collections.Directions;
 import ch.azure.aurore.strings.Strings;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.scene.control.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -20,39 +24,34 @@ public class MenuBarHandler {
     private final MainController main;
     private final Menu fileMenu;
 
-    //private boolean canGoToFormer;
-    //private boolean canGoToNext;
-
     public MenuBarHandler(MainController main, MenuBar menuBar) {
         this.main=main;
         this.fileMenu = getMenu(menuBar, "fileMenu");
 
         //region file menu
-
         clearDataMenu = new MenuItem("Reset application");
-        clearDataMenu.setOnAction(actionEvent -> main.getFieldsHandler().clearDisplay());
+        clearDataMenu.setOnAction(this::resetApplication);
         closeMenu = new MenuItem("Close application");
         closeMenu.setOnAction(actionEvent -> Platform.exit());
         selectDatabaseMenu = new MenuItem("Select database");
         selectDatabaseMenu.setOnAction(actionEvent -> main.getDatabaseAccess().openDiskDatabase());
         useDummyMenu = new MenuItem("Use dummy database");
         useDummyMenu.setOnAction(actionEvent -> main.getDatabaseAccess().loadDummyDB());
-
         //endregion
-//
-//        //region edit menu
-//        main.createEntryMenu.setOnAction(actionEvent -> createEntry());
-//        main.deleteEntryMenu.setOnAction(actionEvent -> main.getListViewHandler().deleteEntry());
-//        //endregion
-//
-//        //region display menu
-//        Optional<Boolean> result = LocalSave.getInstance().getBoolean(SHOW_EMPTY_PROPERTY);
-//        result.ifPresent(aBoolean -> main.showEmptyCheckMenu.setSelected(aBoolean));
-//        main.showEmptyCheckMenu.setOnAction(actionEvent -> {
-//            LocalSave.getInstance().set(SHOW_EMPTY_PROPERTY, main.showEmptyCheckMenu.isSelected());
-//            main.getListViewHandler().refreshEntriesDisplay();
-//        });
-//
+
+        //region edit menu
+        main.createEntryMenu.setOnAction(actionEvent -> main.getDatabaseAccess().createEntry());
+        main.deleteEntryMenu.setOnAction(actionEvent -> main.getDatabaseAccess().deleteEntry());
+        //endregion
+
+        //region display menu
+        Optional<Boolean> result = LocalSave.getInstance().getBoolean(SHOW_EMPTY_PROPERTY);
+        result.ifPresent(main.showEmptyCheckMenu::setSelected);
+        main.showEmptyCheckMenu.setOnAction(actionEvent -> {
+            LocalSave.getInstance().set(SHOW_EMPTY_PROPERTY, main.showEmptyCheckMenu.isSelected());
+            main.getListViewHandler().displayEntries();
+        });
+
 //        Optional<Boolean> fullscreen = LocalSave.getInstance().getBoolean(FULLSCREEN_PROPERTY);
 //        fullscreen.ifPresent(aBoolean -> App.getInstance().getStage().setFullScreen(aBoolean));
 //        main.fullScreenMenu.setOnAction(actionEvent -> {
@@ -60,20 +59,26 @@ public class MenuBarHandler {
 //            LocalSave.getInstance().set(FULLSCREEN_PROPERTY, switchedValue);
 //            App.getInstance().getStage().setFullScreen(switchedValue);
 //        });
+        //endregion
 //
-//        //endregion
-//
-//        //region navigation menu
-//        main.lastMenuItem.setOnAction(actionEvent -> navStack(Directions.backward));
-//        main.nextMenuItem.setOnAction(actionEvent -> navStack(Directions.forward));
+        //region navigation menu
+        main.lastMenuItem.setOnAction(actionEvent -> main.getNavigation().navigate(Directions.backward));
+        main.nextMenuItem.setOnAction(actionEvent -> main.getNavigation().navigate(Directions.forward));
 //
 //        main.root.setOnMouseClicked(mouseEvent -> {
 //            main.root.requestFocus();
 //            setAllowNavigation(true);
 //        });
-//
-//        //endregion
+//endregion
 //    }
+    }
+
+    private void resetApplication(ActionEvent actionEvent) {
+        LocalSave.getInstance().clear();
+
+        main.getNavigation().clearEntry();
+        main.getDatabaseAccess().clearData();
+        main.getMenuHandler().reloadFileMenu();
     }
 
     private Menu getMenu(MenuBar parent, String id) {
@@ -114,7 +119,7 @@ public class MenuBarHandler {
                 });
 
                 if (!Strings.isNullOrEmpty(loadedDB) && loadedDB.equals(checkMenuItem.getText()))
-                        checkMenuItem.setSelected(true);
+                    checkMenuItem.setSelected(true);
             }
             fileMenu.getItems().add(new SeparatorMenuItem());
         }
@@ -129,6 +134,15 @@ public class MenuBarHandler {
     public boolean hideEmptyEntries() {
         System.out.println("HideEmptyEntries not implemented");
         return false;
+    }
+
+    public void enableNavMenus(boolean hasFormer, boolean hasNext) {
+        main.lastMenuItem.setDisable(!hasFormer);
+        main.nextMenuItem.setDisable(!hasNext);
+    }
+
+    public boolean showEmpty() {
+        return main.showEmptyCheckMenu.isSelected();
     }
 }
 
@@ -150,69 +164,3 @@ public class MenuBarHandler {
 //        main.getImageHandler().enableManipulateImageMenu(false);
 //    }
 //
-//    public void createEntry()  {
-//        Dialog<ButtonType> dialog = new Dialog<>();
-//        dialog.initOwner(main.root.getScene().getWindow());
-//        dialog.setTitle("Create Entry");
-//
-//        FXMLLoader fxmlLoader = new FXMLLoader();
-//        fxmlLoader.setLocation(getClass().getResource("NewEntry.fxml"));
-//        NewEntryController dialogController = new NewEntryController(main);
-//        fxmlLoader.setController(dialogController);
-//
-//        try {
-//            dialog.getDialogPane().setContent(fxmlLoader.load());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            System.out.println("Failed to create create dialog");
-//        }
-//
-//        dialog.getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
-//        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
-//        dialog.getDialogPane().lookupButton(ButtonType.OK).setDisable(true);
-//
-//        Optional<ButtonType> result = dialog.showAndWait();
-//        if (result.isPresent() && result.get() == ButtonType.OK){
-//            var item = dialogController.createItem();
-//            item.ifPresent(entryContent -> main.entriesListView.getItems().add(entryContent));
-//        }
-//    }
-//
-
-//
-//    private void navStack(Directions dir) {
-//        EntryContent entry = main.getNavStack().navigateStack(dir);
-//        main.entriesListView.getSelectionModel().select(entry);
-//    }
-//
-//    private void refreshNavigationMenu() {
-//        if (allowNavigation){
-//            main.lastMenuItem.setDisable(!canGoToFormer);
-//            main.nextMenuItem.setDisable(!canGoToNext);
-//        }
-//        else{
-//            main.lastMenuItem.setDisable(true);
-//            main.nextMenuItem.setDisable(true);
-//        }
-//
-//    }
-
-//    public void setAllowNavigation(boolean val) {
-//        allowNavigation = val;
-//        refreshNavigationMenu();
-//    }
-//
-//    public void setCanGoToFormer(boolean val) {
-//        canGoToFormer = val;
-//        refreshNavigationMenu();
-//    }
-//
-//    public void setCanGoToNext(boolean val) {
-//        canGoToNext = val;
-//        refreshNavigationMenu();
-//        main.nextMenuItem.setDisable(!val);
-//    }
-//
-//    public boolean IsShowEmptyEntries() {
-//        return main.showEmptyCheckMenu.isSelected();
-//    }

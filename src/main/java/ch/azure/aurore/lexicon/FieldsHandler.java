@@ -1,20 +1,22 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.IO.API.LocalSave;
 import ch.azure.aurore.collections.Sets;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import ch.azure.aurore.strings.Strings;
 import javafx.collections.ObservableList;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.Node;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.MenuItem;
+import javafx.scene.input.MouseButton;
+import javafx.scene.text.Text;
 
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class FieldsHandler {
 
@@ -26,13 +28,14 @@ public class FieldsHandler {
     private EntryContent displayedEntry;
     private MainController main;
 
-    public FieldsHandler(MainController main, TextField labelsTextField, TextArea linksTextArea,
-                         TextArea contentTextArea, ImageView imageView) {
+    public FieldsHandler(MainController main) {
         this.main = main;
-        contentHandler = new ContentHandler(this,contentTextArea);
-        imageHandler = new ImageHandler(this, imageView);
-        labelHandler = new LabelHandler(this, labelsTextField);
-        linkHandler = new LinkHandler(this,linksTextArea);
+        contentHandler = new ContentHandler(this);
+        imageHandler = new ImageHandler(this);
+        labelHandler = new LabelHandler(this);
+        linkHandler = new LinkHandler(this);
+
+        main.root.setOnMouseClicked(mouseEvent -> clearFocus());
     }
 
     //region accessors
@@ -47,21 +50,23 @@ public class FieldsHandler {
 
     //region methods
     public void clearDisplay() {
-
+        displayedEntry = null;
         contentHandler.clearDisplay();
         imageHandler.clearDisplay();
         labelHandler.clearDisplay();
         linkHandler.clearDisplay();
     }
 
+    private void clearFocus() {
+        main.root.requestFocus();
+    }
+
     public void displayEntry(EntryContent val) {
-        if (displayedEntry != null){
-            contentHandler.recordToEntry(displayedEntry);
-            imageHandler.recordToEntry(displayedEntry);
-            labelHandler.recordToEntry(displayedEntry);
-            linkHandler.recordToEntry(displayedEntry);
-            LexiconDatabase.getInstance().updateEntry(displayedEntry);
-        }
+
+        recordDisplay();
+        clearFocus();
+
+        clearDisplay();
         displayedEntry = val;
 
         contentHandler.displayEntry(val);
@@ -69,29 +74,37 @@ public class FieldsHandler {
         labelHandler.displayEntry(val);
         linkHandler.displayEntry(val);
     }
+
+    public void recordDisplay() {
+        if (displayedEntry != null){
+            contentHandler.recordToEntry(displayedEntry);
+            imageHandler.recordToEntry(displayedEntry);
+            labelHandler.recordToEntry(displayedEntry);
+            linkHandler.recordToEntry(displayedEntry);
+            LexiconDatabase.getInstance().updateEntry(displayedEntry);
+        }
+    }
     //endregion
 }
 
 class ImageHandler {
 
-    public static final String DEFAULT_IMAGE_PATH = "images/imageIcon.png";
-    public static final String COPY_IMAGE_PATH = "images/copyIcon.png";
-    public static final String IMAGE_EXPORT_FOLDER_PATH = "export";
-    private final FieldsHandler parent;
-    private final ImageView imageView;
-
+//    public static final String DEFAULT_IMAGE_PATH = "images/imageIcon.png";
+//    public static final String COPY_IMAGE_PATH = "images/copyIcon.png";
+//    public static final String IMAGE_EXPORT_FOLDER_PATH = "export";
 //    private final MenuItem extractImageMenu;
 //    private final MenuItem clearImageMenu;
-//
+
 //    private final Image defaultImage;
 //    private final Image copyIcon;
+//
+//    private Image entryImage;
+//    private int entryImageID = -1;
 
-    private Image entryImage;
-    private int entryImageID = -1;
+    private final FieldsHandler parent;
 
-    public ImageHandler(FieldsHandler parent, ImageView imageView) {
+    public ImageHandler(FieldsHandler parent) {
         this.parent = parent;
-        this.imageView = imageView;
     }
 
     public void clearDisplay() {
@@ -206,43 +219,38 @@ class ImageHandler {
 //    public void setDefaultImage() {
 //        main.imageView.setImage(defaultImage);
 //    }
-//
-//    public void clear() {
-//    }
 }
 
 class LabelHandler {
     private final FieldsHandler parent;
-    private final TextField textField;
     private Set<String> labels = new HashSet<>();
     private String labelStr = "";
     private boolean isModified;
 
-    public LabelHandler(FieldsHandler parent, TextField textField) {
+    public LabelHandler(FieldsHandler parent) {
         this.parent = parent;
-        this.textField = textField;
 
-        textField.focusedProperty().addListener((observableValue, aBoolean, t1) -> {
+        parent.getMain().labelsTextField.focusedProperty().addListener((observableValue, aBoolean, t1) -> {
             if (!t1)
-                textField.setText(validateText());
+                parent.getMain().labelsTextField.setText(validateText());
 
-            //// disable nav while navigating
+            // disable nav while navigating
             //main.getMenuHandler().setAllowNavigation(!t1);
         });
     }
 
     public void clearDisplay() {
-        textField.clear();
+        parent.getMain().labelsTextField.clear();
         labelStr = "";
         labels = new HashSet<>();
+        isModified = false;
         //System.out.println("not implemented: clear labels");
     }
 
     public void displayEntry(EntryContent val) {
         labels = val.getLabels();
         labelStr = val.getLabelStr();
-        textField.setText(labelStr);
-        isModified = false;
+        parent.getMain().labelsTextField.setText(labelStr);
 
         //System.out.println("not implemented: display labels");
     }
@@ -265,7 +273,7 @@ class LabelHandler {
             return "";
         }
 
-        String txt = textField.getText();
+        String txt = parent.getMain().labelsTextField.getText();
         if (Strings.isNullOrEmpty(txt)){
             return labelStr;
         }
@@ -299,230 +307,292 @@ class LabelHandler {
 }
 
 class LinkHandler {
+
+    private final Comparator<EntryContent> comparator = (o1, o2) -> o1.getFirstLabel().compareToIgnoreCase(o2.getFirstLabel());
     private final FieldsHandler parent;
-    private final TextArea textArea;
+    private Map<Integer, EntryContent> links = new HashMap<>();
+    private String linkStr = "";
+    private HashSet<Integer> toRemove = new HashSet<>();
 
-    public LinkHandler(FieldsHandler parent, TextArea textArea) {
+    public LinkHandler(FieldsHandler parent) {
         this.parent = parent;
-        this.textArea = textArea;
-    }
 
-    public void recordToEntry(EntryContent val) {
-        System.out.println("not implemented: record links");
-    }
-
-    public void displayEntry(EntryContent val) {
-        System.out.println("not implemented : display links");
-        //  main.getLinksHandler().setTextFlow(main.getCurrentEntry());
+        parent.getMain().linksTextFlow.setOnMouseClicked(mouseEvent -> {
+            parent.getMain().linksTextArea.requestFocus();
+            parent.getMain().linksTextArea.end();
+            mouseEvent.consume();
+        });
+        parent.getMain().linksTextArea.focusedProperty().
+                addListener((observableValue, aBoolean, t1) -> focusChanged(t1));
     }
 
     public void clearDisplay() {
-        System.out.println("not implemented : clear links");
+        links.clear();
+        toRemove = new HashSet<>();
+        parent.getMain().linksTextFlow.getChildren().clear();
+        parent.getMain().linksTextArea.clear();
     }
 
-//    public LinkHandler(MainController mainController) {
+    private Hyperlink createLink(EntryContent entry, boolean isLast) {
+        String label = entry.getFirstLabel();
+        if (!isLast)
+            label += ", ";
+        Hyperlink link = new Hyperlink(label);
+        link.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(entry, true));
+        return link;
+    }
 
-//        main.linksTextFlow.setOnMouseClicked(this::switchToEdit);
-//        main.linksTextArea.focusedProperty().
-//                addListener((observableValue, aBoolean, t1) -> textFieldFocus(t1));
-//    }
-//
-//    private Hyperlink createLink(EntryContent entry) {
-//        String label = entry.getFirstLabel() + ", ";
-//        Hyperlink link = new Hyperlink(label);
-//        link.setOnAction(actionEvent -> main.entriesListView.getSelectionModel().select(entry));
-//        return link;
-//    }
-//
-//    private void switchToEdit(MouseEvent event) {
-//        main.linksTextArea.requestFocus();
-//        main.linksTextArea.end();
-//
-//        event.consume();
-//    }
-//
-//    public void setTextFlow(EntryContent current) {
-//        main.linksTextFlow.getChildren().clear();
-//        if (currentEntry == null) {
-//            return;
-//        }
-//
-//        List<Hyperlink> toSort = new ArrayList<>();
-//        for (int i : LexiconDatabase.getInstance().queryEntryLinks(current.getId())) {
-//            Optional<EntryContent> entry = LexiconDatabase.getInstance().queryEntry(i);
-//            if (entry.isPresent()){
-//                Hyperlink hyperlink = createLink(entry.get());
-//                toSort.add(hyperlink);
-//            }
-//        }
-//        toSort.sort((o1, o2) -> o1.getText().compareToIgnoreCase(o2.getText()));
-//        toSort.forEach(hyperlink -> main.linksTextFlow.getChildren().add(hyperlink));
-//    }
-//
-//    private void textFieldFocus(Boolean hasFocus) {
+    public void displayEntry(EntryContent val) {
+        LexiconDatabase.getInstance().queryEntryLinks(val.getId()).forEach(id -> {
+            Optional<EntryContent> entry = parent.getMain().getDatabaseAccess().getByID(id);
+            entry.ifPresent(e -> this.links.put(id, e));
+        });
+        this.linkStr = toLinkString(this.links.values());
+        displayTextFlow();
+    }
+
+    private void displayTextFlow() {
+
+        if (links.size() == 0)
+            return;
+
+        List<EntryContent> sortedList = this.links.values().stream().
+                sorted(comparator).collect(Collectors.toList());
+
+        sortedList.forEach(e -> {
+            Hyperlink h = createLink(e, sortedList.indexOf(e) == sortedList.size()-1);
+            parent.getMain().linksTextFlow.getChildren().add(h);
+        });
+    }
+
+    private void focusChanged(Boolean hasFocus) {
 //        main.getMenuHandler().setAllowNavigation(!hasFocus);
-//        if (hasFocus){
-//            currentEntry = main.getCurrentEntry();
-//            Stream<String> st = LexiconDatabase.getInstance().
-//                    queryEntryLinks(currentEntry.getId()).stream().
-//                    map(main::getByID).
-//                    map(EntryContent::getFirstLabel);
-//
-//            String linksLabel = Strings.toString(st, ", ");
-//
-//            main.linksTextArea.setText(linksLabel);
-//            main.linksTextFlow.getChildren().clear();
-//        }else{
-//            updateLinks(main.linksTextArea.getText());
-//            main.linksTextArea.clear();
-//            setTextFlow(currentEntry);
-//        }
-//    }
-//
-//    private void updateLinks(String linkStr) {
-//
-//        List<Pattern> patterns = Arrays.stream(linkStr.split(", *")).
-//                map(s -> LabelHandler.getSearchPattern(Strings.camel(s))).
-//                collect(Collectors.toList());
-//
-//        Set<EntryContent> newLinks = main.getEntries().stream().
-//                filter(e -> {
-//                    for (Pattern pattern:patterns) {
-//
-//                        Matcher matcher = pattern.matcher(e.getLabelStr());
-//                        if (matcher.matches())
-//                            return true;
-//                    }
-//                    return false;
-//                }).collect(Collectors.toSet());
-//        Set<Integer> newLinkIds = newLinks.stream().
-//                map(EntryContent::getId).
-//                collect(Collectors.toSet());
-//
-//        Set<Integer> oldLinkIds = LexiconDatabase.getInstance().
-//                queryEntryLinks(currentEntry.getId());
-//
-//        Set<Integer> toRemove = new HashSet<>(oldLinkIds);
-//        toRemove.removeAll(newLinkIds);
-//
-//        Set<Integer> toRecord = new HashSet<>(newLinkIds);
-//        toRecord.removeAll(oldLinkIds);
-//
-//        if (toRecord.size()>5) {
-//            System.out.println(toRecord.size());
-//        }
-//        for (int id:toRemove) {
-//            LexiconDatabase.getInstance().removeLink(id, currentEntry.getId());
-//        }
-//        for (int id:toRecord){
-//            LexiconDatabase.getInstance().insertLink(id, currentEntry.getId());
-//        }
-//    }
+        System.out.println("focus: " + hasFocus);
+        if (hasFocus){
+            parent.getMain().linksTextFlow.getChildren().clear();
+            parent.getMain().linksTextArea.setText(linkStr);
+        }else{
+            updateLinks(parent.getMain().linksTextArea.getText());
+            parent.getMain().linksTextArea.clear();
+            displayTextFlow();
+        }
+    }
+
+    private void updateLinks(String txt) {
+
+        if (Strings.isNullOrEmpty(txt)){
+            toRemove.addAll(this.links.keySet());
+            links.clear();
+            linkStr = "";
+            return;
+        }
+
+        List<Pattern> patterns = Arrays.stream(txt.split(", *")).
+                map(s -> LabelHandler.getSearchPattern(Strings.camel(s))).
+                collect(Collectors.toList());
+
+        Map<Integer, EntryContent> newLinks = parent.getMain().getDatabaseAccess().getEntries().stream().
+                filter(e -> patterns.stream().anyMatch(p -> p.matcher(e.getLabelStr()).matches())).
+                collect(Collectors.toMap(EntryContent::getId, e -> e));
+
+        toRemove.addAll(this.links.keySet());
+        toRemove.removeAll(newLinks.keySet());
+
+        this.links = newLinks;
+        this.linkStr = toLinkString(newLinks.values());
+    }
+
+    public void recordToEntry(EntryContent val) {
+        //System.out.println("not implemented: record links");
+        HashSet<Integer> toRecord = new HashSet<>(this.links.keySet());
+        toRecord.removeAll(this.toRemove);
+
+        toRecord.forEach(i -> LexiconDatabase.getInstance().insertLink(i, val.getId()));
+        toRemove.forEach(i -> LexiconDatabase.getInstance().removeLink(i, val.getId()));
+    }
+
+    private String toLinkString(Collection<EntryContent> values) {
+        Stream<EntryContent> st = values.stream().
+                sorted(comparator);
+        return Strings.toString(st, ", ");
+    }
 }
 
 class ContentHandler {
     private final FieldsHandler parent;
-    private final TextArea textArea;
+    private String content;
+    private boolean isModified;
 
-    public ContentHandler(FieldsHandler parent, TextArea textArea) {
+    public ContentHandler(FieldsHandler parent) {
         this.parent = parent;
-        this.textArea = textArea;
-    }
 
-    public void recordToEntry(EntryContent val) {
-        System.out.println("not implemented: record content");
-    }
+        parent.getMain().textFlow_scrollPane.setOnMouseClicked(mouseEvent -> {
+//            if(mouseEvent.getButton().equals(MouseButton.PRIMARY) && mouseEvent.getClickCount() == 2){
+            parent.getMain().contentTextArea.requestFocus();
+            parent.getMain().contentTextArea.end();
+            mouseEvent.consume();
+        });
 
-    public void displayEntry(EntryContent val) {
-        // main.getTextLoader().setTextFlow();
-        System.out.println("not implemented: display content");
+        parent.getMain().contentTextArea.focusedProperty().addListener((observableValue, aBoolean, t1) -> focusChanged(t1));
     }
 
     public void clearDisplay() {
-        System.out.println("not implemented: clear content");
+        parent.getMain().contentTextArea.clear();
+        parent.getMain().contentTextFlow.getChildren().clear();
+        content = "";
+        //System.out.println("not implemented: clear content");
     }
 
+    public void displayEntry(EntryContent val) {
+        this.content = val.getContent();
+        displayTextFlow();
+        //  System.out.println("not implemented: display content");
+    }
 
-//    public TextLoader(MainController main) {
-//        this.main = main;
-//
-//        main.textFlow_scrollPane.setOnMouseClicked(mouseEvent -> {
-//            if(mouseEvent.getButton().equals(MouseButton.PRIMARY) && mouseEvent.getClickCount() == 2){
-//                switchToEdit();
-//                mouseEvent.consume();
-//            }
-//        });
-//        main.contentTextArea.focusedProperty().addListener((observableValue, aBoolean, t1) -> textAreaFocus(t1));
-//    }
-//
-//    private void textAreaFocus(Boolean hasFocus) {
+    private void displayTextFlow() {
+
+        parent.getMain().contentTextFlow.getChildren().clear();
+        if (Strings.isNullOrEmpty(this.content)) {
+            return;
+        }
+
+        List<TextLink> links = new ArrayList<>();
+        for (EntryContent entry: parent.getMain().getDatabaseAccess().getEntries()) {
+            for (String label: entry.getLabels())
+            {
+                Pattern pattern = Pattern.compile("\\b("+ label + "[sx]?)\\b", Pattern.CASE_INSENSITIVE);
+                //  Pattern pattern = Pattern.compile("(^|\\b)("+label + "[sx]?)\\b");
+                Matcher matcher = pattern.matcher(content);
+                while (matcher.find())
+                {
+                    TextLink link = new TextLink(entry, matcher.start(), matcher.end());
+                    links.add(link);
+                }
+            }
+        }
+        links.sort(Comparator.comparingInt(TextLink::getStartIndex));
+
+        int currentIndex =0;
+
+        List<Node> nodes = new ArrayList<>();
+        for (TextLink link :links) {
+            if (currentIndex < link.getStartIndex()){
+                String sequence = content.substring(currentIndex, link.getStartIndex());
+                for (String str:sequence.split(" ")) {
+                    myText text = myText.create(parent, str + " ", myText.VALID_LINK);
+                    nodes.add(text);
+                }
+            }
+
+            String linkStr = content.substring(link.getStartIndex(), link.getEndIndex());
+            if (link.getEntry() != parent.getDisplayEntry()) {
+                if (nodes.size() > 1 && nodes.get(nodes.size()-1) instanceof Hyperlink){
+                    nodes.add(new Text(" "));
+                }
+
+                Hyperlink hyperlink = new Hyperlink(linkStr);
+                hyperlink.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(link.getEntry(), true));
+                nodes.add(hyperlink);
+            }
+            else{
+                myText text = myText.create(parent, linkStr, myText.INVALID_LINK);
+                nodes.add(text);
+            }
+            currentIndex = link.getEndIndex();
+        }
+
+        nodes.add(new Text(content.substring(currentIndex))); // <- end of text
+        nodes.forEach(n-> parent.getMain().contentTextFlow.getChildren().add(n));
+    }
+
+    private void focusChanged(Boolean hasFocus) {
+       // System.out.println("text area focus state: " + hasFocus + " - " + focusCount++);
+        if (hasFocus){
+            parent.getMain().contentTextArea.setText(content);
+            parent.getMain().textFlow_scrollPane.setVisible(false);
+
+        }else{
+            if (parent.getDisplayEntry() == null){
+                this.isModified = false;
+                this.content = "";
+            }
+            else {
+                this.isModified = !this.content.equals(parent.getMain().contentTextArea.getText());
+                this.content = parent.getMain().contentTextArea.getText();
+            }
+            parent.getMain().contentTextArea.clear();
+            parent.getMain().textFlow_scrollPane.setVisible(true);
+
+            displayTextFlow();
+        }
+
 //        if (hasFocus){
-//            main.contentTextArea.setText(main.getCurrentEntry().getContent());
-//           // main.contentTextFlow.getChildren().clear();
-//            main.textFlow_scrollPane.setVisible(false);
+//            parent.getMain().contentTextArea.setText(parent.getMain().getCurrentEntry().getContent());
+//           // parent.getMain().contentTextFlow.getChildren().clear();
+//            parent.getMain().textFlow_scrollPane.setVisible(false);
 //        }else{
-//            main.getCurrentEntry().setContent(main.contentTextArea.getText());
-//            main.contentTextArea.clear();
-//            main.textFlow_scrollPane.setVisible(true);
-//
-//            setTextFlow();
+//            parent.getMain().getCurrentEntry().setContent(parent.getMain().contentTextArea.getText());
 //        }
-//    }
-//
-//    public void setTextFlow() {
-//
-//        EntryContent currentEntry = main.getCurrentEntry();
-//
-//        main.contentTextFlow.getChildren().clear();
-//        if (currentEntry == null || !currentEntry.hasContent()) {
-//            return;
-//        }
-//        String currentEntryContent = currentEntry.getContent();
-//        List<TextLink>links = new ArrayList<>();
-//
-//        for (EntryContent entry: main.getEntries()) {
-//            for (String label: entry.getLabels())
-//            {
-//                Pattern pattern = Pattern.compile("\\b("+label + "[sx]?)\\b");
-//
-//                Matcher matcher = pattern.matcher(currentEntryContent);
-//                while (matcher.find())
-//                {
-//                    TextLink link = new TextLink(entry, matcher.start(), matcher.end());
-//                    links.add(link);
-//                }
-//            }
-//        }
-//        links.sort(Comparator.comparingInt(TextLink::getStartIndex));
-//
-//        int currentIndex =0;
-//
-//        for (TextLink link :links) {
-//            if (currentIndex < link.getStartIndex()){
-//                String str = currentEntryContent.substring(currentIndex, link.getStartIndex());
-//                Text text = new Text(str);
-//                main.contentTextFlow.getChildren().add(text);
-//            }
-//
-//            String linkStr = currentEntryContent.substring(link.getStartIndex(), link.getEndIndex());
-//            if (link.getEntry() != currentEntry) {
-//                Hyperlink hyperlink = new Hyperlink(linkStr);
-//                hyperlink.setOnAction(actionEvent -> main.entriesListView.getSelectionModel().select(link.getEntry()));
-//                main.contentTextFlow.getChildren().add(hyperlink);
-//            }
-//            else{
-//                main.contentTextFlow.getChildren().add(new Text(linkStr));
-//            }
-//            currentIndex = link.getEndIndex();
-//        }
-//        Text endText = new Text(currentEntryContent.substring(currentIndex));
-//        main.contentTextFlow.getChildren().add(endText);
-//    }
-//
-//    private void switchToEdit() {
-//        main.contentTextArea.requestFocus();
-//        main.contentTextArea.end();
-//    }
+    }
+
+    public void recordToEntry(EntryContent val) {
+        if (isModified){
+            val.setContent(this.content);
+        }
+        //System.out.println("not implemented: record content");
+    }
+}
+
+class myText extends Text{
+
+    public static final int VALID_LINK = 1;
+    public static final int INVALID_LINK = 0;
+    public static final String VALID_STYLE = "-fx-font-smoothing-type: lcd;-fx-fill: red;";
+    public static final String NEUTRAL_STYLE = "-fx-font-smoothing-type: lcd;-fx-fill: black;";
+    private static final String INVALID_STYLE = "-fx-font-smoothing-type: lcd;-fx-fill: orange;";
+
+    private final String txt;
+    private final int type;
+
+    public myText(String txt, int type) {
+        this.txt = txt;
+        this.type = type;
+    }
+
+    @Override
+    public String toString() {
+        return "myText{" +
+                "txt='" + txt + '\'' +
+                '}';
+    }
+
+    public static myText create(FieldsHandler handler, String str, int type){
+        myText text = new myText(str, type);
+        text.setText(str);
+
+        String style = type > 0 ? VALID_STYLE : INVALID_STYLE;
+        text.setOnMouseEntered(mouseEvent -> text.setStyle(style));
+        text.setOnMouseExited(mouseEvent -> text.setStyle(NEUTRAL_STYLE));
+
+        ContextMenu menu = new ContextMenu();
+        MenuItem createEntry = new MenuItem("");
+        createEntry.setOnAction(actionEvent -> handler.getMain().getDatabaseAccess().createEntry(str));
+        menu.getItems().add(createEntry);
+
+        if (type > 0){
+            text.setOnContextMenuRequested(contextMenuEvent -> {
+                createEntry.setText("Create entry from ["+ str + "]");
+                menu.show(text, contextMenuEvent.getScreenX(), contextMenuEvent.getScreenY());
+                contextMenuEvent.consume();
+            });
+        }
+        text.setOnMouseClicked(mouseEvent -> {
+            if (mouseEvent.getButton() == MouseButton.SECONDARY){
+                mouseEvent.consume();
+            }
+        });
+        return text;
+    }
 }
 
 class TextLink{

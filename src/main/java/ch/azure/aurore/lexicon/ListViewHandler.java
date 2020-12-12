@@ -2,10 +2,14 @@ package ch.azure.aurore.lexicon;
 
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.IEntryListener;
+import javafx.beans.value.ChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
-import javafx.scene.control.*;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
 import javafx.scene.paint.Color;
 
 import java.util.regex.Matcher;
@@ -15,6 +19,7 @@ public class ListViewHandler {
 
     private final MainController main;
     private final ListView<EntryContent> listView;
+    private final ChangeListener<EntryContent> listViewListener;
     private String filterStr = "";
 
     public ListViewHandler(MainController main, ListView<EntryContent> listView) {
@@ -22,28 +27,38 @@ public class ListViewHandler {
         this.listView = listView;
 
         listView.setCellFactory(entryContentListView -> new EntryListCell());
-
-        listView.getSelectionModel().selectedItemProperty().
-                addListener((observableValue, entryContent, t1) -> listViewSelection(t1));
+        listViewListener = (observableValue, entryContent, t1) -> main.getNavigation().selectEntry(t1, false);
+        switchListViewEvent(true);
 
         //region context menu
         ContextMenu menu = new ContextMenu();
         MenuItem delete = new MenuItem("Delete Selection");
         delete.setOnAction(actionEvent -> {
             EntryContent current = main.getNavigation().getCurrentEntry();
-            if (current != null)
+            if (current != null) {
+                switchListViewEvent(false);
                 main.getDatabaseAccess().deleteEntry(current);
+                switchListViewEvent(true);
+            }
         });
         menu.getItems().add(delete);
         listView.setContextMenu(menu);
         //endregion
 
-//        //region search box
-//        main.searchTextField.textProperty().addListener((observableValue, s, t1) -> {
-//            filterStr = t1;
-//            refreshEntriesDisplay();
-//        });
-//        //endregion
+        //region search box
+        main.searchTextField.textProperty().addListener((observableValue, s, t1) -> {
+            filterStr = t1;
+            displayEntries();
+        });
+        //endregion
+    }
+
+    private void switchListViewEvent(boolean value) {
+        if (value){
+            listView.getSelectionModel().selectedItemProperty().addListener(listViewListener);
+        }else{
+            listView.getSelectionModel().selectedItemProperty().removeListener(listViewListener);
+        }
     }
 
     public void displayEntries() {
@@ -54,7 +69,7 @@ public class ListViewHandler {
 
         FilteredList<EntryContent> filteredList = new FilteredList<>(entries, e -> {
 
-            if (!main.getMenuHandler().hideEmptyEntries() && !e.hasContent())
+            if (!main.getMenuHandler().showEmpty() && !e.hasContent())
                 return false;
 
             Pattern pattern = Pattern.compile("^.*" + filterStr + ".*$");
@@ -69,32 +84,13 @@ public class ListViewHandler {
         EntryContent selection = main.getNavigation().getCurrentEntry();
         if (selection != null)
             listView.getSelectionModel().select(selection);
-
-//        Optional<String> db = main.getCurrentDB();
-//        if (db.isPresent()) {
-//            Optional<Integer> currentID = LocalSave.getInstance().getMapInteger(CURRENT_ENTRIES, db.get());
-//            if (currentID.isPresent()) {
-//                Optional<EntryContent> result = sortedList.stream().
-//                        filter(e -> e.getId() == currentID.get()).findAny();
-//
-//                result.ifPresent(e -> main.entriesListView.getSelectionModel().select(e));
-//            }
-//        }
-//    }
     }
 
-    private void listViewSelection(EntryContent val) {
-        if (val == null)
-            return;
-
-        main.getNavigation().selectEntry(val);
-        main.getFieldsHandler().displayEntry(val);
-
-//            main.entriesListView.scrollTo(value);
-
-
-//        }
-//    }
+    public void scrollTo(EntryContent val) {
+        switchListViewEvent(false);
+        listView.getSelectionModel().select(val);
+        switchListViewEvent(true);
+       // main.entriesListView.scrollTo(val);
     }
 }
 

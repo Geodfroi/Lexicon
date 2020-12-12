@@ -4,7 +4,6 @@ import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -20,45 +19,45 @@ public class MainController implements Initializable {
     //region fields
     //region FXML fields
     @FXML
-    private MenuBar menuBar;
+    public MenuBar menuBar;
     @FXML
-    private BorderPane root;
+    public BorderPane root;
     @FXML
-    private Menu fileMenu;
+    public Menu fileMenu;
     @FXML
-    private MenuItem lastMenuItem;
+    public MenuItem lastMenuItem;
     @FXML
-    private MenuItem nextMenuItem;
+    public MenuItem nextMenuItem;
     @FXML
-    private MenuItem deleteEntryMenu;
+    public MenuItem deleteEntryMenu;
     @FXML
-    private ImageView imageView;
+    public ImageView imageView;
     @FXML
-    private  StackPane imageStackPane;
+    public  StackPane imageStackPane;
     @FXML
-    private  MenuItem createEntryMenu;
+    public  MenuItem createEntryMenu;
     @FXML
-    private  MenuItem fullScreenMenu;
+    public  MenuItem fullScreenMenu;
     @FXML
-    private StackPane scrollPane;
+    public StackPane scrollPane;
     @FXML
-    private ScrollPane textFlow_scrollPane;
+    public ScrollPane textFlow_scrollPane;
     @FXML
-    private ListView<EntryContent> entriesListView;
+    public ListView<EntryContent> entriesListView;
     @FXML
-    private TextArea contentTextArea;
+    public TextArea contentTextArea;
     @FXML
-    private TextFlow contentTextFlow;
+    public TextFlow contentTextFlow;
     @FXML
-    private TextField labelsTextField;
+    public TextField labelsTextField;
     @FXML
-    private TextArea linksTextArea;
+    public TextArea linksTextArea;
     @FXML
-    private CheckMenuItem showEmptyCheckMenu;
+    public CheckMenuItem showEmptyCheckMenu;
     @FXML
-    private TextField searchTextField;
+    public TextField searchTextField;
     @FXML
-    private TextFlow linksTextFlow;
+    public TextFlow linksTextFlow;
     //endregion
 
     private ListViewHandler listViewHandler;
@@ -98,14 +97,11 @@ public class MainController implements Initializable {
         menuHandler = new MenuBarHandler(this, menuBar);
         databaseAccess = new DatabaseAccess(this);
         navigationHandler = new NavigationHandler(this);
-        fieldsHandler = new FieldsHandler(this,
-                labelsTextField,
-                linksTextArea,
-                contentTextArea,
-                imageView);
+        fieldsHandler = new FieldsHandler(this);
     }
 
     public void quit() {
+        fieldsHandler.recordDisplay();
         LexiconDatabase.getInstance().close();
     }
 
