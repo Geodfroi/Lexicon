@@ -1,22 +1,142 @@
 package ch.azure.aurore.lexicon;
 
+import ch.azure.aurore.IO.API.Disk;
 import ch.azure.aurore.collections.Sets;
+import ch.azure.aurore.images.API.Images;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import ch.azure.aurore.strings.Strings;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Hyperlink;
-import javafx.scene.control.MenuItem;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.TransferMode;
 import javafx.scene.text.Text;
 
+import java.io.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+class ContentHandler {
+    private final FieldsHandler parent;
+    private String content;
+    private boolean isModified;
+
+    public ContentHandler(FieldsHandler parent) {
+        this.parent = parent;
+
+        parent.getMain().textFlow_scrollPane.setOnMouseClicked(mouseEvent -> {
+//            if(mouseEvent.getButton().equals(MouseButton.PRIMARY) && mouseEvent.getClickCount() == 2){
+            parent.getMain().contentTextArea.requestFocus();
+            parent.getMain().contentTextArea.end();
+            mouseEvent.consume();
+        });
+
+        parent.getMain().contentTextArea.focusedProperty().addListener((observableValue, aBoolean, t1) -> focusChanged(t1));
+    }
+
+    public void clearDisplay() {
+        parent.getMain().contentTextArea.clear();
+        parent.getMain().contentTextFlow.getChildren().clear();
+        content = "";
+        //System.out.println("not implemented: clear content");
+    }
+
+    public void displayEntry(EntryContent val) {
+        this.content = val.getContent();
+        displayTextFlow();
+        //  System.out.println("not implemented: display content");
+    }
+
+    private void displayTextFlow() {
+
+        parent.getMain().contentTextFlow.getChildren().clear();
+        if (Strings.isNullOrEmpty(this.content)) {
+            return;
+        }
+
+        List<TextLink> links = new ArrayList<>();
+        for (EntryContent entry: parent.getMain().getDatabaseAccess().getEntries()) {
+            for (String label: entry.getLabels())
+            {
+                String regex = "\\b(" + label + "|" + Strings.unCamel(label) + "[sx]?)\\b";
+                Matcher matcher = Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(content);
+                while (matcher.find())
+                {
+                    TextLink link = new TextLink(entry, matcher.start(), matcher.end());
+                    links.add(link);
+                }
+            }
+        }
+        links.sort(Comparator.comparingInt(TextLink::getStartIndex));
+
+        int currentIndex =0;
+
+        List<Node> nodes = new ArrayList<>();
+        for (TextLink link :links) {
+            if (currentIndex < link.getStartIndex()){
+                String sequence = content.substring(currentIndex, link.getStartIndex());
+                for (String str:sequence.split(" ")) {
+                    myText text = myText.create(parent, str + " ", myText.VALID_LINK);
+                    nodes.add(text);
+                }
+            }
+
+            String linkStr = content.substring(link.getStartIndex(), link.getEndIndex());
+            if (link.getEntry() != parent.getDisplayEntry()) {
+                if (nodes.size() > 1 && nodes.get(nodes.size()-1) instanceof Hyperlink){
+                    nodes.add(new Text(" "));
+                }
+
+                Hyperlink hyperlink = new Hyperlink(linkStr);
+                hyperlink.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(link.getEntry(), true));
+                nodes.add(hyperlink);
+            }
+            else{
+                myText text = myText.create(parent, linkStr, myText.INVALID_LINK);
+                nodes.add(text);
+            }
+            currentIndex = link.getEndIndex();
+        }
+
+        nodes.add(new Text(content.substring(currentIndex))); // <- end of text
+        nodes.forEach(n-> parent.getMain().contentTextFlow.getChildren().add(n));
+    }
+
+    private void focusChanged(Boolean hasFocus) {
+        // System.out.println("text area focus state: " + hasFocus + " - " + focusCount++);
+        if (hasFocus){
+            parent.getMain().contentTextArea.setText(content);
+            parent.getMain().textFlow_scrollPane.setVisible(false);
+
+        }else{
+            if (parent.getDisplayEntry() == null){
+                this.isModified = false;
+                this.content = "";
+            }
+            else {
+                this.isModified = !this.content.equals(parent.getMain().contentTextArea.getText());
+                this.content = parent.getMain().contentTextArea.getText();
+            }
+            parent.getMain().contentTextArea.clear();
+            parent.getMain().textFlow_scrollPane.setVisible(true);
+
+            displayTextFlow();
+        }
+    }
+
+    public void recordToEntry(EntryContent val) {
+        if (isModified){
+            val.setContent(this.content);
+        }
+        //System.out.println("not implemented: record content");
+    }
+}
 
 public class FieldsHandler {
 
@@ -26,7 +146,7 @@ public class FieldsHandler {
     private final LabelHandler labelHandler;
 
     private EntryContent displayedEntry;
-    private MainController main;
+    private final MainController main;
 
     public FieldsHandler(MainController main) {
         this.main = main;
@@ -89,136 +209,124 @@ public class FieldsHandler {
 
 class ImageHandler {
 
-//    public static final String DEFAULT_IMAGE_PATH = "images/imageIcon.png";
-//    public static final String COPY_IMAGE_PATH = "images/copyIcon.png";
-//    public static final String IMAGE_EXPORT_FOLDER_PATH = "export";
-//    private final MenuItem extractImageMenu;
-//    private final MenuItem clearImageMenu;
+    public static final String DEFAULT_IMAGE_PATH = "images/imageIcon.png";
+    public static final String COPY_IMAGE_PATH = "images/copyIcon.png";
+    public static final String IMAGE_EXPORT_FOLDER_PATH = "export";
 
-//    private final Image defaultImage;
-//    private final Image copyIcon;
-//
-//    private Image entryImage;
-//    private int entryImageID = -1;
+    private final Image defaultImage;
+    private final Image copyImage;
 
     private final FieldsHandler parent;
+    private byte[] byteArray;
+    private boolean isModified;
 
     public ImageHandler(FieldsHandler parent) {
         this.parent = parent;
+
+        InputStream stream = App.class.getResourceAsStream(DEFAULT_IMAGE_PATH);
+        defaultImage = new Image(stream);
+        stream = App.class.getResourceAsStream(COPY_IMAGE_PATH);
+        copyImage = new Image(stream);
+
+        this.parent.getMain().imageView.setImage(defaultImage);
+
+        //region context menu
+        ContextMenu imageMenu = new ContextMenu();
+        MenuItem clearMenu = new MenuItem("Clear image");
+        imageMenu.getItems().add(clearMenu);
+        clearMenu.setOnAction(actionEvent -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setHeaderText("Clear image ?");
+            Optional<ButtonType> result1 = alert.showAndWait();
+            if (result1.isPresent() && result1.get() == ButtonType.OK) {
+                this.byteArray = null;
+                isModified = true;
+                parent.getMain().imageView.setImage(defaultImage);
+            }
+        });
+
+        MenuItem extractMenu = new MenuItem("Extract image");
+        imageMenu.getItems().add(extractMenu);
+        extractMenu.setOnAction(actionEvent -> {
+            String exportPath = IMAGE_EXPORT_FOLDER_PATH + "/" + parent.getDisplayEntry().getId() + ".png";
+            File file = Images.toFile(byteArray, exportPath);
+            Disk.openFile(file.getParent());
+        });
+
+        parent.getMain().imageStackPane.setOnContextMenuRequested(contextMenuEvent -> {
+            clearMenu.setDisable(byteArray== null);
+            extractMenu.setDisable(byteArray== null);
+            imageMenu.show(parent.getMain().imageView, contextMenuEvent.getScreenX(),contextMenuEvent.getScreenY());
+        });
+        //endregion
+
+        //region drag events
+        parent.getMain().imageStackPane.setOnDragOver(event -> {
+            if (event.getGestureSource() != parent.getMain().imageStackPane &&
+                    event.getDragboard().hasFiles() &&
+                    parent.getDisplayEntry() != null) {
+                event.acceptTransferModes(TransferMode.COPY);
+            }
+            event.consume();
+        });
+        parent.getMain().imageStackPane.setOnDragEntered(event -> {
+            if (event.getGestureSource() != parent.getMain().imageStackPane &&
+                    event.getDragboard().hasFiles()) {
+                parent.getMain().imageView.setImage(copyImage);
+            }
+            event.consume();
+        });
+        parent.getMain().imageStackPane.setOnDragExited(event -> {
+            //   displayImage();
+            if (this.byteArray != null){
+                Image image = new Image(new ByteArrayInputStream(this.byteArray));
+                parent.getMain().imageView.setImage(image);
+            }else{
+                parent.getMain().imageView.setImage(defaultImage);
+            }
+
+            event.consume();
+        });
+        parent.getMain().imageStackPane.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles()) {
+                List<File> files = db.getFiles();
+                if (files.size() >0){
+                    try {
+                        byteArray = new FileInputStream(files.get(0)).readAllBytes();
+                        isModified = true;
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                success = true;
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
+        //endregion
     }
 
     public void clearDisplay() {
-    }
-
-    public void recordToEntry(EntryContent val) {
-        System.out.println("not impl: record image");
+        this.parent.getMain().imageView.setImage(defaultImage);
+        this.byteArray = null;
+        isModified = false;
     }
 
     public void displayEntry(EntryContent val) {
-        System.out.println("not implemented: display image");
-        //         main.getImageHandler().displayImage();
-//            main.getImageHandler().enableManipulateImageMenu(main.getCurrentEntry() .hasImage());
-//
+        if (val.hasImage()){
+            var inputStream = new ByteArrayInputStream(val.getImage());
+            byteArray = val.getImage();
+            parent.getMain().imageView.setImage(new Image(inputStream));
+        }
     }
 
-//    public ImageHandler(MainController main) {
-//
-//        //region image
-//        URL url = App.class.getResource(DEFAULT_IMAGE_PATH);
-//        defaultImage = new Image(url.toString());
-//        url = App.class.getResource(COPY_IMAGE_PATH);
-//        copyIcon = new Image(url.toString());
-//        main.imageView.setImage(defaultImage);
-//
-//        ContextMenu imageMenu = new ContextMenu();
-//        main.imageStackPane.setOnMouseClicked(mouseEvent -> imageMenu.show(main.imageStackPane, Side.TOP, 40,40));
-//
-//        clearImageMenu = new MenuItem("Clear image");
-//        clearImageMenu.setOnAction(actionEvent -> {
-//            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-//            alert.setHeaderText("Clear image ?");
-//            Optional<ButtonType> result1 = alert.showAndWait();
-//            if (result1.isPresent() && result1.get() == ButtonType.OK) {
-//                main.getCurrentEntry().setImage(null);
-//                main.imageView.setImage(defaultImage);
-//            }
-//            enableManipulateImageMenu(main.getCurrentEntry().hasImage());
-//        });
-//        imageMenu.getItems().add(clearImageMenu);
-//        extractImageMenu = new MenuItem("Extract image");
-//        extractImageMenu.setOnAction(actionEvent -> {
-//            byte[] array = main.getCurrentEntry().getImage();
-//            String exportPath = IMAGE_EXPORT_FOLDER_PATH + "/" + main.getCurrentEntry().getId() + ".png";
-//            File file = Images.toFile(array, exportPath);
-//            Disk.openFile(file.getParent());
-//        });
-//        imageMenu.getItems().add(extractImageMenu);
-//
-//        //endregion
-//
-//        //region drag events
-//        main.imageStackPane.setOnDragOver(event -> {
-//            if (event.getGestureSource() != main.imageStackPane &&
-//                    event.getDragboard().hasFiles() &&
-//                    main.getCurrentEntry() != null) {
-//                event.acceptTransferModes(TransferMode.COPY);
-//            }
-//
-//            event.consume();
-//        });
-//        main.imageStackPane.setOnDragEntered(event -> {
-//            if (event.getGestureSource() != main.imageStackPane &&
-//                    event.getDragboard().hasFiles()) {
-//                main.imageView.setImage(copyIcon);
-//            }
-//            event.consume();
-//        });
-//        main.imageStackPane.setOnDragExited(event -> {
-//            displayImage();
-//            event.consume();
-//        });
-//        main.imageStackPane.setOnDragDropped(event -> {
-//            Dragboard db = event.getDragboard();
-//            boolean success = false;
-//            if (db.hasFiles()) {
-//                List<File> files = db.getFiles();
-//                if (files.size() >0){
-//                    System.out.println(files.get(0).toString());
-//
-//                    Optional<byte[]> imgArray = Images.toByteArray(files.get(0));
-//                    imgArray.ifPresent(bytes -> main.getCurrentEntry().setImage(bytes));
-//
-//                }
-//                success = true;
-//            }
-//            event.setDropCompleted(success);
-//            event.consume();
-//        });
-//        //endregion
-//    }
-//
-//    void displayImage() {
-//        if (main.getCurrentEntry().hasImage()){
-//            if (entryImageID != main.getCurrentEntry().getId()) {
-//                entryImageID = main.getCurrentEntry().getId();
-//                ByteArrayInputStream inputStream = new ByteArrayInputStream(main.getCurrentEntry().getImage());
-//                entryImage = new Image(inputStream);
-//            }
-//            main.imageView.setImage(entryImage);
-//        }
-//        else{
-//            setDefaultImage();
-//        }
-//    }
-//
-//    public void enableManipulateImageMenu(boolean hasImage) {
-//        extractImageMenu.setDisable(!hasImage);
-//        clearImageMenu.setDisable(!hasImage);
-//    }
-//
-//    public void setDefaultImage() {
-//        main.imageView.setImage(defaultImage);
-//    }
+    public void recordToEntry(EntryContent val) {
+        if (isModified){
+            val.setImage(byteArray);
+        }
+    }
 }
 
 class LabelHandler {
@@ -418,131 +526,6 @@ class LinkHandler {
     }
 }
 
-class ContentHandler {
-    private final FieldsHandler parent;
-    private String content;
-    private boolean isModified;
-
-    public ContentHandler(FieldsHandler parent) {
-        this.parent = parent;
-
-        parent.getMain().textFlow_scrollPane.setOnMouseClicked(mouseEvent -> {
-//            if(mouseEvent.getButton().equals(MouseButton.PRIMARY) && mouseEvent.getClickCount() == 2){
-            parent.getMain().contentTextArea.requestFocus();
-            parent.getMain().contentTextArea.end();
-            mouseEvent.consume();
-        });
-
-        parent.getMain().contentTextArea.focusedProperty().addListener((observableValue, aBoolean, t1) -> focusChanged(t1));
-    }
-
-    public void clearDisplay() {
-        parent.getMain().contentTextArea.clear();
-        parent.getMain().contentTextFlow.getChildren().clear();
-        content = "";
-        //System.out.println("not implemented: clear content");
-    }
-
-    public void displayEntry(EntryContent val) {
-        this.content = val.getContent();
-        displayTextFlow();
-        //  System.out.println("not implemented: display content");
-    }
-
-    private void displayTextFlow() {
-
-        parent.getMain().contentTextFlow.getChildren().clear();
-        if (Strings.isNullOrEmpty(this.content)) {
-            return;
-        }
-
-        List<TextLink> links = new ArrayList<>();
-        for (EntryContent entry: parent.getMain().getDatabaseAccess().getEntries()) {
-            for (String label: entry.getLabels())
-            {
-                Pattern pattern = Pattern.compile("\\b("+ label + "[sx]?)\\b", Pattern.CASE_INSENSITIVE);
-                //  Pattern pattern = Pattern.compile("(^|\\b)("+label + "[sx]?)\\b");
-                Matcher matcher = pattern.matcher(content);
-                while (matcher.find())
-                {
-                    TextLink link = new TextLink(entry, matcher.start(), matcher.end());
-                    links.add(link);
-                }
-            }
-        }
-        links.sort(Comparator.comparingInt(TextLink::getStartIndex));
-
-        int currentIndex =0;
-
-        List<Node> nodes = new ArrayList<>();
-        for (TextLink link :links) {
-            if (currentIndex < link.getStartIndex()){
-                String sequence = content.substring(currentIndex, link.getStartIndex());
-                for (String str:sequence.split(" ")) {
-                    myText text = myText.create(parent, str + " ", myText.VALID_LINK);
-                    nodes.add(text);
-                }
-            }
-
-            String linkStr = content.substring(link.getStartIndex(), link.getEndIndex());
-            if (link.getEntry() != parent.getDisplayEntry()) {
-                if (nodes.size() > 1 && nodes.get(nodes.size()-1) instanceof Hyperlink){
-                    nodes.add(new Text(" "));
-                }
-
-                Hyperlink hyperlink = new Hyperlink(linkStr);
-                hyperlink.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(link.getEntry(), true));
-                nodes.add(hyperlink);
-            }
-            else{
-                myText text = myText.create(parent, linkStr, myText.INVALID_LINK);
-                nodes.add(text);
-            }
-            currentIndex = link.getEndIndex();
-        }
-
-        nodes.add(new Text(content.substring(currentIndex))); // <- end of text
-        nodes.forEach(n-> parent.getMain().contentTextFlow.getChildren().add(n));
-    }
-
-    private void focusChanged(Boolean hasFocus) {
-       // System.out.println("text area focus state: " + hasFocus + " - " + focusCount++);
-        if (hasFocus){
-            parent.getMain().contentTextArea.setText(content);
-            parent.getMain().textFlow_scrollPane.setVisible(false);
-
-        }else{
-            if (parent.getDisplayEntry() == null){
-                this.isModified = false;
-                this.content = "";
-            }
-            else {
-                this.isModified = !this.content.equals(parent.getMain().contentTextArea.getText());
-                this.content = parent.getMain().contentTextArea.getText();
-            }
-            parent.getMain().contentTextArea.clear();
-            parent.getMain().textFlow_scrollPane.setVisible(true);
-
-            displayTextFlow();
-        }
-
-//        if (hasFocus){
-//            parent.getMain().contentTextArea.setText(parent.getMain().getCurrentEntry().getContent());
-//           // parent.getMain().contentTextFlow.getChildren().clear();
-//            parent.getMain().textFlow_scrollPane.setVisible(false);
-//        }else{
-//            parent.getMain().getCurrentEntry().setContent(parent.getMain().contentTextArea.getText());
-//        }
-    }
-
-    public void recordToEntry(EntryContent val) {
-        if (isModified){
-            val.setContent(this.content);
-        }
-        //System.out.println("not implemented: record content");
-    }
-}
-
 class myText extends Text{
 
     public static final int VALID_LINK = 1;
@@ -552,11 +535,9 @@ class myText extends Text{
     private static final String INVALID_STYLE = "-fx-font-smoothing-type: lcd;-fx-fill: orange;";
 
     private final String txt;
-    private final int type;
 
-    public myText(String txt, int type) {
+    public myText(String txt) {
         this.txt = txt;
-        this.type = type;
     }
 
     @Override
@@ -567,7 +548,7 @@ class myText extends Text{
     }
 
     public static myText create(FieldsHandler handler, String str, int type){
-        myText text = new myText(str, type);
+        myText text = new myText(str);
         text.setText(str);
 
         String style = type > 0 ? VALID_STYLE : INVALID_STYLE;

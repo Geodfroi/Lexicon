@@ -45,10 +45,6 @@ public class NewEntryController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         labelTextField.setText(labelStr);
 
-        //labelTextField.focusedProperty().addListener((observableValue, aBoolean, t1) -> focusChanged(t1));
-        //            switchTextEvent(false);
-        //            labelTextField.setText(labelStr);
-        //            switchTextEvent(true);
         ChangeListener<String> textChanged = (observableValue, s, t1) -> {
             validate();
 //            switchTextEvent(false);
@@ -58,11 +54,6 @@ public class NewEntryController implements Initializable {
         labelTextField.textProperty().addListener(textChanged);
       //  switchTextEvent(true);
     }
-
-//    private void switchTextEvent(boolean val) {
-//        if (val) labelTextField.textProperty().addListener(textChanged);
-//        else labelTextField.textProperty().removeListener(textChanged);
-//    }
 
     private void validate() {
         String str = labelTextField.getText();

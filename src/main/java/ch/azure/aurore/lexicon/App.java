@@ -10,8 +10,6 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,6 +26,7 @@ public class App extends Application {
 
     private MainController mainController;
     private Scene scene;
+    private Stage stage;
 
     public static App getInstance() {
         return instance;
@@ -35,7 +34,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-
+        this.stage = stage;
         instance = this;
         FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("Main.fxml"));
         List<Integer> size = getSize();
@@ -50,14 +49,10 @@ public class App extends Application {
         mainController.start();
 
         stage.show();
-        stage.widthProperty().addListener((observableValue, number, t1) -> {
-            ArrayList<Double> size1 = new ArrayList<>(Arrays.asList(t1.doubleValue(), stage.getHeight()));
-            LocalSave.getInstance().setDoubles(WINDOW_SIZE, size1);
-        });
-        stage.heightProperty().addListener((observableValue, number, t1) -> {
-            var size12 = new ArrayList<>(Arrays.asList(stage.getWidth(), t1.doubleValue()));
-            LocalSave.getInstance().setDoubles(WINDOW_SIZE, size12);
-        });
+        stage.widthProperty().addListener((observableValue, number, t1) ->
+                LocalSave.getInstance().setDoubles(WINDOW_SIZE, t1.doubleValue(), stage.getHeight()));
+        stage.heightProperty().addListener((observableValue, number, t1) ->
+                LocalSave.getInstance().setDoubles(WINDOW_SIZE, stage.getWidth(), t1.doubleValue()));
     }
 
     private List<Integer> getSize() {
@@ -85,5 +80,9 @@ public class App extends Application {
 
     public Scene getScene() {
         return scene;
+    }
+
+    public Stage getStage() {
+        return stage;
     }
 }

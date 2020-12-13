@@ -26,7 +26,7 @@ public class MenuBarHandler {
 
     public MenuBarHandler(MainController main, MenuBar menuBar) {
         this.main=main;
-        this.fileMenu = getMenu(menuBar, "fileMenu");
+        this.fileMenu = getFileMenu(menuBar);
 
         //region file menu
         clearDataMenu = new MenuItem("Reset application");
@@ -52,25 +52,19 @@ public class MenuBarHandler {
             main.getListViewHandler().displayEntries();
         });
 
-//        Optional<Boolean> fullscreen = LocalSave.getInstance().getBoolean(FULLSCREEN_PROPERTY);
-//        fullscreen.ifPresent(aBoolean -> App.getInstance().getStage().setFullScreen(aBoolean));
-//        main.fullScreenMenu.setOnAction(actionEvent -> {
-//            boolean switchedValue = !App.getInstance().getStage().isFullScreen();
-//            LocalSave.getInstance().set(FULLSCREEN_PROPERTY, switchedValue);
-//            App.getInstance().getStage().setFullScreen(switchedValue);
-//        });
+        Optional<Boolean> fullscreen = LocalSave.getInstance().getBoolean(FULLSCREEN_PROPERTY);
+        fullscreen.ifPresent(aBoolean -> App.getInstance().getStage().setFullScreen(aBoolean));
+        main.fullScreenMenu.setOnAction(actionEvent -> {
+            boolean switchedValue = !App.getInstance().getStage().isFullScreen();
+            LocalSave.getInstance().set(FULLSCREEN_PROPERTY, switchedValue);
+            App.getInstance().getStage().setFullScreen(switchedValue);
+        });
         //endregion
-//
+
         //region navigation menu
         main.lastMenuItem.setOnAction(actionEvent -> main.getNavigation().navigate(Directions.backward));
         main.nextMenuItem.setOnAction(actionEvent -> main.getNavigation().navigate(Directions.forward));
-//
-//        main.root.setOnMouseClicked(mouseEvent -> {
-//            main.root.requestFocus();
-//            setAllowNavigation(true);
-//        });
-//endregion
-//    }
+        //endregion
     }
 
     private void resetApplication(ActionEvent actionEvent) {
@@ -81,13 +75,13 @@ public class MenuBarHandler {
         main.getMenuHandler().reloadFileMenu();
     }
 
-    private Menu getMenu(MenuBar parent, String id) {
+    private Menu getFileMenu(MenuBar parent) {
         for (Menu menu:parent.getMenus()) {
-            if (menu.getId().equals(id)){
+            if (menu.getId().equals("fileMenu")){
                 return menu;
             }
         }
-        throw new RuntimeException("can't find [" + id + "] menu item");
+        throw new RuntimeException("can't find [fileMenu] menu item");
     }
 
     public void reloadFileMenu() {
@@ -131,11 +125,6 @@ public class MenuBarHandler {
 
     }
 
-    public boolean hideEmptyEntries() {
-        System.out.println("HideEmptyEntries not implemented");
-        return false;
-    }
-
     public void enableNavMenus(boolean hasFormer, boolean hasNext) {
         main.lastMenuItem.setDisable(!hasFormer);
         main.nextMenuItem.setDisable(!hasNext);
@@ -145,22 +134,3 @@ public class MenuBarHandler {
         return main.showEmptyCheckMenu.isSelected();
     }
 }
-
-//    public void clearData() {
-//        LexiconDatabase.getInstance().close();
-//        LocalSave.getInstance().clear();
-//
-//        main.setCurrentEntry(null);
-//
-//        reloadFileMenu();
-//        if (main.getEntries() != null)
-//            main.getEntries().clear();
-//
-//        main.linksTextFlow.getChildren().clear();
-//        main.contentTextFlow.getChildren().clear();
-//        main.labelsTextField.clear();
-//
-//        main.getImageHandler().setDefaultImage();
-//        main.getImageHandler().enableManipulateImageMenu(false);
-//    }
-//

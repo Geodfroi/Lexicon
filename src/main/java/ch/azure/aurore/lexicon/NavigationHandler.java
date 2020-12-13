@@ -49,7 +49,6 @@ public class NavigationHandler {
         LocalSave.getInstance().setMapValue(SELECTED_ENTRIES, currentDB, val.getId());
         currentEntry = val;
 
-        System.out.println("not implemented: update navigation menu");
         main.getFieldsHandler().displayEntry(val);
 
         if (selectListView)
