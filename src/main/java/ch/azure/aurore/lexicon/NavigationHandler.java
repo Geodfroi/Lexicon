@@ -1,16 +1,11 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.IO.API.LocalSave;
-import ch.azure.aurore.collections.Directions;
-import ch.azure.aurore.collections.NavStack;
+import ch.azure.aurore.javaxt.collections.Directions;
+import ch.azure.aurore.javaxt.collections.NavStack;
+import ch.azure.aurore.javaxt.strings.Strings;
 import ch.azure.aurore.lexiconDB.EntryContent;
-import ch.azure.aurore.strings.Strings;
-
-import java.util.Optional;
 
 public class NavigationHandler {
-
-    private static final String SELECTED_ENTRIES = "currentEntries";
 
     private final NavStack<EntryContent> navStack = new NavStack<>();
     private EntryContent currentEntry;
@@ -46,7 +41,7 @@ public class NavigationHandler {
         if (Strings.isNullOrEmpty(currentDB))
             throw new IllegalStateException("DB value cannot be null");
 
-        LocalSave.getInstance().setMapValue(SELECTED_ENTRIES, currentDB, val.getId());
+        LexiconState.getInstance().setCurrentID(currentDB, val.get_id());
         currentEntry = val;
 
         main.getFieldsHandler().displayEntry(val);
@@ -58,10 +53,11 @@ public class NavigationHandler {
     }
 
     public void toRecordedEntry(String loadedDB) {
-        Optional<Integer> entryID = LocalSave.getInstance().getMapInteger(SELECTED_ENTRIES, loadedDB);
-        if (entryID.isPresent()){
-            Optional<EntryContent> entry = main.getDatabaseAccess().getByID(entryID.get());
-            entry.ifPresent(entryContent -> selectEntry(entryContent, true));
+        int id = LexiconState.getInstance().getCurrentID(loadedDB);
+        if (id != -1){
+            EntryContent entry = main.getDatabaseAccess().getByID(id);
+            if (entry != null)
+                selectEntry(entry, true);
         }
     }
 }

@@ -1,0 +1,7 @@
+{
+  "databaseMap" : {
+    "OtherTestLexicon.SQLite" : "TestFolder\\OtherTestLexicon.SQLite",
+    "TestLexicon.SQLite" : "TestFolder\\TestLexicon.SQLite"
+  },
+  "currentDB" : null
+}

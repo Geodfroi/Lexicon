@@ -1,10 +1,8 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.IO.API.LocalSave;
+import ch.azure.aurore.javaxt.sqlite.wrapper.SQLite;
+import ch.azure.aurore.javaxt.strings.Strings;
 import ch.azure.aurore.lexiconDB.EntryContent;
-import ch.azure.aurore.lexiconDB.LexiconDatabase;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -13,38 +11,24 @@ import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 public class DatabaseAccess {
-
-    private static final String SELECTED_DATABASE_PROPERTY = "currentDB";
-    private static final String FILES_LIST_PROPERTY = "DBPaths";
-
     private final MainController main;
 
-    private Map<String, String> databases;
     private String loadedDB;
-    private ObservableList<EntryContent> entries;
+    private SQLite sqLite;
 
-    public DatabaseAccess(MainController main){
+    public DatabaseAccess(MainController main) {
         this.main = main;
-        databases = LocalSave.getInstance().getMapValues(FILES_LIST_PROPERTY);
-    }
-
-    //region accessors
-    public ObservableList<EntryContent> getEntries() {
-        return this.entries;
     }
 
     public String getLoadedDB() {
         return loadedDB;
     }
-    //endregion
 
     public void createEntry(String label) {
-
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.initOwner(main.root.getScene().getWindow());
         dialog.setTitle("Create Entry");
@@ -66,7 +50,7 @@ public class DatabaseAccess {
         dialog.getDialogPane().lookupButton(ButtonType.OK).setDisable(true);
 
         Optional<ButtonType> result = dialog.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK){
+        if (result.isPresent() && result.get() == ButtonType.OK) {
             dialogController.createItem();
         }
     }
@@ -79,73 +63,60 @@ public class DatabaseAccess {
         System.out.println("not implemented: delete entry");
     }
 
-    public void deleteEntry(EntryContent entry){
-
+    public void deleteEntry(EntryContent entry) {
         if (entry == null) {
             System.out.println("no selection for delete");
             return;
         }
 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setHeaderText("Delete ["+entry.getFirstLabel()+"] ?");
+        alert.setHeaderText("Delete [" + entry.getFirstLabel() + "] ?");
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
 
-            if (LexiconDatabase.getInstance().removeEntry(entry)) {
-                entries.remove(entry);
+            if (sqLite.removeItem(entry)) {
                 main.getNavigation().clearEntry();
             }
         }
     }
 
-    private Optional<String> getDatabaseStr() {
-        Optional<String> name = LocalSave.getInstance().getString(SELECTED_DATABASE_PROPERTY);
-        if (name.isPresent() && this.databases.containsKey(name.get()))
-            return name;
-        return Optional.empty();
-    }
-
-    public Map<String,String> getDBPaths() {
-        return LocalSave.getInstance().getMapValues(FILES_LIST_PROPERTY);
-    }
-
-    public Optional<EntryContent> getByID(Integer id) {
-        return entries.stream().
-                filter(e -> id.equals(e.getId())).
-                findAny();
+    public EntryContent getByID(int id) {
+        return sqLite.queryItem(EntryContent.class, id);
     }
 
     public void loadDummyDB() {
-        for (String path:LexiconDatabase.populateDummyDB()) {
+        for (String path : EntryContent.createDummyDB()) {
             File file = new File(path);
-            LocalSave.getInstance().setMapValue(FILES_LIST_PROPERTY, file.getName(), path);
+            LexiconState.getInstance().setDatabasePath(file.getName(), path);
         }
         main.getNavigation().clearEntry();
         main.getMenuHandler().reloadFileMenu();
     }
 
-    public void loadDatabase(){
-        Optional<String> name = getDatabaseStr();
-        name.ifPresent(this::loadDatabase);
+    public void loadDatabase() {
+        String name = LexiconState.getInstance().getCurrentPathStr();
+        if (!Strings.isNullOrEmpty(name))
+            loadDatabase(name);
     }
 
     public void loadDatabase(String name) {
-        if (name == null || name.equals(loadedDB)){
+        if (name == null || name.equals(loadedDB)) {
             return;
         }
-        if (!databases.containsKey(name)){
+        String path = LexiconState.getInstance().getDatabasePath(name);
+        if (path == null)
             return;
-        }
-        LexiconDatabase.getInstance().open(databases.get(name));
 
-        this.loadedDB = name;
-        LocalSave.getInstance().set(SELECTED_DATABASE_PROPERTY, name);
-
-        entries = FXCollections.observableList(LexiconDatabase.getInstance().queryEntries());
-        main.getListViewHandler().displayEntries();
-        main.getMenuHandler().reloadFileMenu();
-        main.getNavigation().clearEntry();
-        main.getNavigation().toRecordedEntry(loadedDB);
+        sqLite = SQLite.connect(path);
+        if (sqLite != null) {
+            this.loadedDB = name;
+            LexiconState.getInstance().setCurrentDB(name);
+            main.getListViewHandler().displayEntries();
+            main.getMenuHandler().reloadFileMenu();
+            main.getNavigation().clearEntry();
+            main.getNavigation().toRecordedEntry(loadedDB);
+        } else
+            LexiconState.getInstance().removePath(name);
     }
 
     public void openDiskDatabase() {
@@ -153,20 +124,35 @@ public class DatabaseAccess {
         dialog.setTitle("Select Database");
         File file = dialog.showOpenDialog(App.getInstance().getScene().getWindow());
 
-        if (file != null){
+        if (file != null) {
             String databasePath = file.getAbsolutePath();
-            if (LexiconDatabase.getInstance().open(databasePath)){
+            if ((sqLite = SQLite.connect(databasePath)) != null) {
                 String name = file.getName();
-                databases.put(name, databasePath);
-                LocalSave.getInstance().setMapValue(FILES_LIST_PROPERTY, name, databasePath);
+                LexiconState.getInstance().setDatabasePath(name, databasePath);
                 loadDatabase(name);
             }
         }
     }
 
     public void clearData() {
-        databases = new HashMap<>();
-        entries.clear();
+        LexiconState.getInstance().clearPaths();
         loadedDB = "";
+    }
+
+    public void close() {
+        if (sqLite != null)
+            sqLite.close();
+    }
+
+    public boolean updateItem(EntryContent item) {
+        return sqLite.updateItem(item);
+    }
+
+    public EntryContent queryEntry(Integer id) {
+        return sqLite.queryItem(EntryContent.class, id);
+    }
+
+    public List<EntryContent> queryEntries() {
+        return sqLite.queryItems(EntryContent.class);
     }
 }

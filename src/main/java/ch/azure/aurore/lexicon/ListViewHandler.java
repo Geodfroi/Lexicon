@@ -3,6 +3,7 @@ package ch.azure.aurore.lexicon;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.IEntryListener;
 import javafx.beans.value.ChangeListener;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
@@ -62,8 +63,7 @@ public class ListViewHandler {
     }
 
     public void displayEntries() {
-
-        ObservableList<EntryContent> entries = main.getDatabaseAccess().getEntries();
+        ObservableList<EntryContent> entries = FXCollections.observableList(main.getDatabaseAccess().queryEntries());
         if (entries.size() == 0)
             return;
 

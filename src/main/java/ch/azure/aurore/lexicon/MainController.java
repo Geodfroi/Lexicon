@@ -1,9 +1,8 @@
 package ch.azure.aurore.lexicon;
 
+import ch.azure.aurore.javaxt.fxml.IController;
 import ch.azure.aurore.lexiconDB.EntryContent;
-import ch.azure.aurore.lexiconDB.LexiconDatabase;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -13,8 +12,7 @@ import javafx.scene.text.TextFlow;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-public class MainController implements Initializable {
-
+public class MainController implements IController {
 
     //region fields
     //region FXML fields
@@ -33,11 +31,11 @@ public class MainController implements Initializable {
     @FXML
     public ImageView imageView;
     @FXML
-    public  StackPane imageStackPane;
+    public StackPane imageStackPane;
     @FXML
-    public  MenuItem createEntryMenu;
+    public MenuItem createEntryMenu;
     @FXML
-    public  MenuItem fullScreenMenu;
+    public MenuItem fullScreenMenu;
     @FXML
     public StackPane scrollPane;
     @FXML
@@ -68,7 +66,6 @@ public class MainController implements Initializable {
     private FieldsHandler fieldsHandler;
     //endregion
 
-    //region accessors
     public ListViewHandler getListViewHandler() {
         return listViewHandler;
     }
@@ -88,9 +85,7 @@ public class MainController implements Initializable {
     public DatabaseAccess getDatabaseAccess() {
         return databaseAccess;
     }
-    //endregion
 
-    //region methods
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         listViewHandler = new ListViewHandler(this, entriesListView);
@@ -102,7 +97,7 @@ public class MainController implements Initializable {
 
     public void quit() {
         fieldsHandler.recordDisplay();
-        LexiconDatabase.getInstance().close();
+        databaseAccess.close();
     }
 
     public void start() {
@@ -110,34 +105,3 @@ public class MainController implements Initializable {
         menuHandler.reloadFileMenu();
     }
 }
-
-//    public EntryContent getCurrentEntry() {
-//        if (entries == null)
-//            return null;
-//
-//        Optional<String> db = getCurrentDB();
-//        if (db.isPresent()){
-//            Optional<Integer> val = LocalSave.getInstance().
-//                    getMapInteger(SELECTED_ENTRIES, db.get());
-//            if (val.isPresent()) {
-//                return getByID(val.get());
-//            }
-//        }
-//        return null;
-//    }
-
-//    public boolean setCurrentEntry(EntryContent value) {
-//        Optional<String> db = getCurrentDB();
-//        if (db.isPresent()) {
-//            if (value == null){
-//                LocalSave.getInstance().setMapValue(SELECTED_ENTRIES, db.get(), value.getId());
-//            }
-//            else{
-//                LocalSave.getInstance().removeMapValue(SELECTED_ENTRIES, db.get());
-//            }
-//            return true;
-//        }
-//        return false;
-//    }
-
-//endregion

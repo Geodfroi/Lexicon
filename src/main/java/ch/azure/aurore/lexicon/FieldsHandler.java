@@ -1,12 +1,11 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.IO.API.Disk;
-import ch.azure.aurore.collections.Sets;
-import ch.azure.aurore.images.API.Images;
+import ch.azure.aurore.javaxt.IO.API.Disk;
+import ch.azure.aurore.javaxt.collections.Sets;
+import ch.azure.aurore.javaxt.conversions.Conversions;
+import ch.azure.aurore.javaxt.images.API.Images;
+import ch.azure.aurore.javaxt.strings.Strings;
 import ch.azure.aurore.lexiconDB.EntryContent;
-import ch.azure.aurore.lexiconDB.LexiconDatabase;
-import ch.azure.aurore.strings.Strings;
-import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -20,7 +19,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 class ContentHandler {
     private final FieldsHandler parent;
@@ -44,13 +42,11 @@ class ContentHandler {
         parent.getMain().contentTextArea.clear();
         parent.getMain().contentTextFlow.getChildren().clear();
         content = "";
-        //System.out.println("not implemented: clear content");
     }
 
     public void displayEntry(EntryContent val) {
         this.content = val.getContent();
         displayTextFlow();
-        //  System.out.println("not implemented: display content");
     }
 
     private void displayTextFlow() {
@@ -61,13 +57,11 @@ class ContentHandler {
         }
 
         List<TextLink> links = new ArrayList<>();
-        for (EntryContent entry: parent.getMain().getDatabaseAccess().getEntries()) {
-            for (String label: entry.getLabels())
-            {
+        for (EntryContent entry : parent.getMain().getDatabaseAccess().queryEntries()) {
+            for (String label : entry.getLabels()) {
                 String regex = "\\b(" + label + "|" + Strings.unCamel(label) + "[sx]?)\\b";
                 Matcher matcher = Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(content);
-                while (matcher.find())
-                {
+                while (matcher.find()) {
                     TextLink link = new TextLink(entry, matcher.start(), matcher.end());
                     links.add(link);
                 }
@@ -75,13 +69,13 @@ class ContentHandler {
         }
         links.sort(Comparator.comparingInt(TextLink::getStartIndex));
 
-        int currentIndex =0;
+        int currentIndex = 0;
 
         List<Node> nodes = new ArrayList<>();
-        for (TextLink link :links) {
-            if (currentIndex < link.getStartIndex()){
+        for (TextLink link : links) {
+            if (currentIndex < link.getStartIndex()) {
                 String sequence = content.substring(currentIndex, link.getStartIndex());
-                for (String str:sequence.split(" ")) {
+                for (String str : sequence.split(" ")) {
                     myText text = myText.create(parent, str + " ", myText.VALID_LINK);
                     nodes.add(text);
                 }
@@ -89,15 +83,14 @@ class ContentHandler {
 
             String linkStr = content.substring(link.getStartIndex(), link.getEndIndex());
             if (link.getEntry() != parent.getDisplayEntry()) {
-                if (nodes.size() > 1 && nodes.get(nodes.size()-1) instanceof Hyperlink){
+                if (nodes.size() > 1 && nodes.get(nodes.size() - 1) instanceof Hyperlink) {
                     nodes.add(new Text(" "));
                 }
 
                 Hyperlink hyperlink = new Hyperlink(linkStr);
                 hyperlink.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(link.getEntry(), true));
                 nodes.add(hyperlink);
-            }
-            else{
+            } else {
                 myText text = myText.create(parent, linkStr, myText.INVALID_LINK);
                 nodes.add(text);
             }
@@ -105,21 +98,20 @@ class ContentHandler {
         }
 
         nodes.add(new Text(content.substring(currentIndex))); // <- end of text
-        nodes.forEach(n-> parent.getMain().contentTextFlow.getChildren().add(n));
+        nodes.forEach(n -> parent.getMain().contentTextFlow.getChildren().add(n));
     }
 
     private void focusChanged(Boolean hasFocus) {
         // System.out.println("text area focus state: " + hasFocus + " - " + focusCount++);
-        if (hasFocus){
+        if (hasFocus) {
             parent.getMain().contentTextArea.setText(content);
             parent.getMain().textFlow_scrollPane.setVisible(false);
 
-        }else{
-            if (parent.getDisplayEntry() == null){
+        } else {
+            if (parent.getDisplayEntry() == null) {
                 this.isModified = false;
                 this.content = "";
-            }
-            else {
+            } else {
                 this.isModified = !this.content.equals(parent.getMain().contentTextArea.getText());
                 this.content = parent.getMain().contentTextArea.getText();
             }
@@ -131,7 +123,7 @@ class ContentHandler {
     }
 
     public void recordToEntry(EntryContent val) {
-        if (isModified){
+        if (isModified) {
             val.setContent(this.content);
         }
         //System.out.println("not implemented: record content");
@@ -144,9 +136,8 @@ public class FieldsHandler {
     private final ContentHandler contentHandler;
     private final ImageHandler imageHandler;
     private final LabelHandler labelHandler;
-
-    private EntryContent displayedEntry;
     private final MainController main;
+    private EntryContent displayedEntry;
 
     public FieldsHandler(MainController main) {
         this.main = main;
@@ -170,11 +161,11 @@ public class FieldsHandler {
 
     //region methods
     public void clearDisplay() {
-        displayedEntry = null;
         contentHandler.clearDisplay();
         imageHandler.clearDisplay();
         labelHandler.clearDisplay();
         linkHandler.clearDisplay();
+        displayedEntry = null;
     }
 
     private void clearFocus() {
@@ -185,10 +176,8 @@ public class FieldsHandler {
 
         recordDisplay();
         clearFocus();
-
         clearDisplay();
         displayedEntry = val;
-
         contentHandler.displayEntry(val);
         imageHandler.displayEntry(val);
         labelHandler.displayEntry(val);
@@ -196,12 +185,12 @@ public class FieldsHandler {
     }
 
     public void recordDisplay() {
-        if (displayedEntry != null){
+        if (displayedEntry != null) {
             contentHandler.recordToEntry(displayedEntry);
             imageHandler.recordToEntry(displayedEntry);
             labelHandler.recordToEntry(displayedEntry);
             linkHandler.recordToEntry(displayedEntry);
-            LexiconDatabase.getInstance().updateEntry(displayedEntry);
+            main.getDatabaseAccess().updateItem(displayedEntry);
         }
     }
     //endregion
@@ -248,15 +237,15 @@ class ImageHandler {
         MenuItem extractMenu = new MenuItem("Extract image");
         imageMenu.getItems().add(extractMenu);
         extractMenu.setOnAction(actionEvent -> {
-            String exportPath = IMAGE_EXPORT_FOLDER_PATH + "/" + parent.getDisplayEntry().getId() + ".png";
+            String exportPath = IMAGE_EXPORT_FOLDER_PATH + "/" + parent.getDisplayEntry().get_id() + ".png";
             File file = Images.toFile(byteArray, exportPath);
             Disk.openFile(file.getParent());
         });
 
         parent.getMain().imageStackPane.setOnContextMenuRequested(contextMenuEvent -> {
-            clearMenu.setDisable(byteArray== null);
-            extractMenu.setDisable(byteArray== null);
-            imageMenu.show(parent.getMain().imageView, contextMenuEvent.getScreenX(),contextMenuEvent.getScreenY());
+            clearMenu.setDisable(byteArray == null);
+            extractMenu.setDisable(byteArray == null);
+            imageMenu.show(parent.getMain().imageView, contextMenuEvent.getScreenX(), contextMenuEvent.getScreenY());
         });
         //endregion
 
@@ -278,10 +267,10 @@ class ImageHandler {
         });
         parent.getMain().imageStackPane.setOnDragExited(event -> {
             //   displayImage();
-            if (this.byteArray != null){
+            if (this.byteArray != null) {
                 Image image = new Image(new ByteArrayInputStream(this.byteArray));
                 parent.getMain().imageView.setImage(image);
-            }else{
+            } else {
                 parent.getMain().imageView.setImage(defaultImage);
             }
 
@@ -292,7 +281,7 @@ class ImageHandler {
             boolean success = false;
             if (db.hasFiles()) {
                 List<File> files = db.getFiles();
-                if (files.size() >0){
+                if (files.size() > 0) {
                     try {
                         byteArray = new FileInputStream(files.get(0)).readAllBytes();
                         isModified = true;
@@ -315,7 +304,7 @@ class ImageHandler {
     }
 
     public void displayEntry(EntryContent val) {
-        if (val.hasImage()){
+        if (val.hasImage()) {
             var inputStream = new ByteArrayInputStream(val.getImage());
             byteArray = val.getImage();
             parent.getMain().imageView.setImage(new Image(inputStream));
@@ -323,7 +312,7 @@ class ImageHandler {
     }
 
     public void recordToEntry(EntryContent val) {
-        if (isModified){
+        if (isModified) {
             val.setImage(byteArray);
         }
     }
@@ -347,6 +336,10 @@ class LabelHandler {
         });
     }
 
+    public static Pattern getSearchPattern(String str) {
+        return Pattern.compile("^.*\\b" + str + "[sx]?\\b.*$");
+    }
+
     public void clearDisplay() {
         parent.getMain().labelsTextField.clear();
         labelStr = "";
@@ -363,12 +356,8 @@ class LabelHandler {
         //System.out.println("not implemented: display labels");
     }
 
-    public static Pattern getSearchPattern(String str){
-        return Pattern.compile("^.*\\b"+ str + "[sx]?\\b.*$");
-    }
-
     public void recordToEntry(EntryContent val) {
-        if (isModified){
+        if (isModified) {
             val.setLabels(labels);
         }
         //System.out.println("not implemented: record label");
@@ -376,13 +365,13 @@ class LabelHandler {
 
     private String validateText() {
         EntryContent current = parent.getDisplayEntry();
-        ObservableList<EntryContent> entries = parent.getMain().getDatabaseAccess().getEntries();
-        if (current == null || entries.size() == 0){
+        List<EntryContent> entries = parent.getMain().getDatabaseAccess().queryEntries();
+        if (current == null || entries.size() == 0) {
             return "";
         }
 
         String txt = parent.getMain().labelsTextField.getText();
-        if (Strings.isNullOrEmpty(txt)){
+        if (Strings.isNullOrEmpty(txt)) {
             return labelStr;
         }
 
@@ -405,7 +394,7 @@ class LabelHandler {
             if (valid)
                 validLabels.add(s);
         }
-        if (!Sets.equals(validLabels, labels)){
+        if (!Sets.equals(validLabels, labels)) {
             labelStr = EntryContent.toLabelStr(validLabels);
             labels = validLabels;
             isModified = true;
@@ -416,11 +405,9 @@ class LabelHandler {
 
 class LinkHandler {
 
-    private final Comparator<EntryContent> comparator = (o1, o2) -> o1.getFirstLabel().compareToIgnoreCase(o2.getFirstLabel());
     private final FieldsHandler parent;
-    private Map<Integer, EntryContent> links = new HashMap<>();
+    private final Set<Integer> adisplayLinkIds = new HashSet<>();
     private String linkStr = "";
-    private HashSet<Integer> toRemove = new HashSet<>();
 
     public LinkHandler(FieldsHandler parent) {
         this.parent = parent;
@@ -434,11 +421,24 @@ class LinkHandler {
                 addListener((observableValue, aBoolean, t1) -> focusChanged(t1));
     }
 
+    private static List<EntryContent> getLinks(Set<Integer> ids, DatabaseAccess databaseAccess) {
+        return ids.stream().
+                map(databaseAccess::queryEntry).
+                filter(Objects::nonNull).
+                sorted((o1, o2) -> o1.getFirstLabel().compareToIgnoreCase(o2.getFirstLabel())).
+                collect(Collectors.toList());
+    }
+
+    private static String toLinkString(Set<Integer> ids, DatabaseAccess access) {
+        List<EntryContent> links = getLinks(ids, access);
+        return Conversions.toString(links, ", ");
+    }
+
     public void clearDisplay() {
-        links.clear();
-        toRemove = new HashSet<>();
+        adisplayLinkIds.clear();
         parent.getMain().linksTextFlow.getChildren().clear();
         parent.getMain().linksTextArea.clear();
+        linkStr = null;
     }
 
     private Hyperlink createLink(EntryContent entry, boolean isLast) {
@@ -451,24 +451,18 @@ class LinkHandler {
     }
 
     public void displayEntry(EntryContent val) {
-        LexiconDatabase.getInstance().queryEntryLinks(val.getId()).forEach(id -> {
-            Optional<EntryContent> entry = parent.getMain().getDatabaseAccess().getByID(id);
-            entry.ifPresent(e -> this.links.put(id, e));
-        });
-        this.linkStr = toLinkString(this.links.values());
+        adisplayLinkIds.addAll(val.getLinks());
+        linkStr = toLinkString(adisplayLinkIds, parent.getMain().getDatabaseAccess());
         displayTextFlow();
     }
 
     private void displayTextFlow() {
-
-        if (links.size() == 0)
+        if (adisplayLinkIds.size() == 0)
             return;
 
-        List<EntryContent> sortedList = this.links.values().stream().
-                sorted(comparator).collect(Collectors.toList());
-
-        sortedList.forEach(e -> {
-            Hyperlink h = createLink(e, sortedList.indexOf(e) == sortedList.size()-1);
+        List<EntryContent> links = getLinks(adisplayLinkIds, parent.getMain().getDatabaseAccess());
+        links.forEach(e -> {
+            Hyperlink h = createLink(e, links.indexOf(e) == links.size() - 1);
             parent.getMain().linksTextFlow.getChildren().add(h);
         });
     }
@@ -476,10 +470,10 @@ class LinkHandler {
     private void focusChanged(Boolean hasFocus) {
 //        main.getMenuHandler().setAllowNavigation(!hasFocus);
         System.out.println("focus: " + hasFocus);
-        if (hasFocus){
+        if (hasFocus) {
             parent.getMain().linksTextFlow.getChildren().clear();
             parent.getMain().linksTextArea.setText(linkStr);
-        }else{
+        } else {
             updateLinks(parent.getMain().linksTextArea.getText());
             parent.getMain().linksTextArea.clear();
             displayTextFlow();
@@ -487,46 +481,46 @@ class LinkHandler {
     }
 
     private void updateLinks(String txt) {
+        adisplayLinkIds.clear();
+        linkStr = "";
 
-        if (Strings.isNullOrEmpty(txt)){
-            toRemove.addAll(this.links.keySet());
-            links.clear();
-            linkStr = "";
+        if (Strings.isNullOrEmpty(txt))
             return;
-        }
 
         List<Pattern> patterns = Arrays.stream(txt.split(", *")).
                 map(s -> LabelHandler.getSearchPattern(Strings.camel(s))).
                 collect(Collectors.toList());
 
-        Map<Integer, EntryContent> newLinks = parent.getMain().getDatabaseAccess().getEntries().stream().
-                filter(e -> patterns.stream().anyMatch(p -> p.matcher(e.getLabelStr()).matches())).
-                collect(Collectors.toMap(EntryContent::getId, e -> e));
-
-        toRemove.addAll(this.links.keySet());
-        toRemove.removeAll(newLinks.keySet());
-
-        this.links = newLinks;
-        this.linkStr = toLinkString(newLinks.values());
+        for (EntryContent e : parent.getMain().getDatabaseAccess().queryEntries()) {
+            if (patterns.stream().anyMatch(p -> p.matcher(e.getLabelStr()).matches()))
+                adisplayLinkIds.add(e.get_id());
+        }
+        this.linkStr = toLinkString(adisplayLinkIds, parent.getMain().getDatabaseAccess());
     }
 
     public void recordToEntry(EntryContent val) {
-        //System.out.println("not implemented: record links");
-        HashSet<Integer> toRecord = new HashSet<>(this.links.keySet());
-        toRecord.removeAll(this.toRemove);
+        HashSet<Integer> toRecord = new HashSet<>(adisplayLinkIds);
+        toRecord.removeAll(val.getLinks());
+        HashSet<Integer> toRemove = new HashSet<>(val.getLinks());
+        toRemove.removeAll(adisplayLinkIds);
 
-        toRecord.forEach(i -> LexiconDatabase.getInstance().insertLink(i, val.getId()));
-        toRemove.forEach(i -> LexiconDatabase.getInstance().removeLink(i, val.getId()));
-    }
-
-    private String toLinkString(Collection<EntryContent> values) {
-        Stream<EntryContent> st = values.stream().
-                sorted(comparator);
-        return Strings.toString(st, ", ");
+        EntryContent entry;
+        for (Integer id : toRecord) {
+            if ((entry = parent.getMain().getDatabaseAccess().queryEntry(id)) != null) {
+                EntryContent.createLink(val, entry);
+                parent.getMain().getDatabaseAccess().updateItem(entry);
+            }
+        }
+        for (Integer id : toRemove) {
+            if ((entry = parent.getMain().getDatabaseAccess().queryEntry(id)) != null) {
+                EntryContent.removeLink(val, entry);
+                parent.getMain().getDatabaseAccess().updateItem(entry);
+            }
+        }
     }
 }
 
-class myText extends Text{
+class myText extends Text {
 
     public static final int VALID_LINK = 1;
     public static final int INVALID_LINK = 0;
@@ -540,14 +534,7 @@ class myText extends Text{
         this.txt = txt;
     }
 
-    @Override
-    public String toString() {
-        return "myText{" +
-                "txt='" + txt + '\'' +
-                '}';
-    }
-
-    public static myText create(FieldsHandler handler, String str, int type){
+    public static myText create(FieldsHandler handler, String str, int type) {
         myText text = new myText(str);
         text.setText(str);
 
@@ -560,36 +547,43 @@ class myText extends Text{
         createEntry.setOnAction(actionEvent -> handler.getMain().getDatabaseAccess().createEntry(str));
         menu.getItems().add(createEntry);
 
-        if (type > 0){
+        if (type > 0) {
             text.setOnContextMenuRequested(contextMenuEvent -> {
-                createEntry.setText("Create entry from ["+ str + "]");
+                createEntry.setText("Create entry from [" + str + "]");
                 menu.show(text, contextMenuEvent.getScreenX(), contextMenuEvent.getScreenY());
                 contextMenuEvent.consume();
             });
         }
         text.setOnMouseClicked(mouseEvent -> {
-            if (mouseEvent.getButton() == MouseButton.SECONDARY){
+            if (mouseEvent.getButton() == MouseButton.SECONDARY) {
                 mouseEvent.consume();
             }
         });
         return text;
     }
+
+    @Override
+    public String toString() {
+        return "myText{" +
+                "txt='" + txt + '\'' +
+                '}';
+    }
 }
 
-class TextLink{
+class TextLink {
 
     private final int endIndex;
     private final int startIndex;
     private final EntryContent entry;
 
-    public EntryContent getEntry() {
-        return entry;
-    }
-
     public TextLink(EntryContent entry, int startIndex, int endIndex) {
-        this.entry=entry;
+        this.entry = entry;
         this.startIndex = startIndex;
         this.endIndex = endIndex;
+    }
+
+    public EntryContent getEntry() {
+        return entry;
     }
 
     public int getEndIndex() {
@@ -602,6 +596,6 @@ class TextLink{
 
     @Override
     public String toString() {
-        return entry.getFirstLabel() + "@"+ startIndex;
+        return entry.getFirstLabel() + "@" + startIndex;
     }
 }

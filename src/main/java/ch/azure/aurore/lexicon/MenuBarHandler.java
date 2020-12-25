@@ -1,21 +1,16 @@
 package ch.azure.aurore.lexicon;
 
-import ch.azure.aurore.IO.API.LocalSave;
-import ch.azure.aurore.collections.Directions;
-import ch.azure.aurore.strings.Strings;
+import ch.azure.aurore.javaxt.collections.Directions;
+import ch.azure.aurore.javaxt.strings.Strings;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.scene.control.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MenuBarHandler {
-
-    private static final String SHOW_EMPTY_PROPERTY = "showEmptyEntries";
-    private static final String FULLSCREEN_PROPERTY = "fullscreen";
 
     private final MenuItem selectDatabaseMenu;
     private final MenuItem clearDataMenu;
@@ -25,7 +20,7 @@ public class MenuBarHandler {
     private final Menu fileMenu;
 
     public MenuBarHandler(MainController main, MenuBar menuBar) {
-        this.main=main;
+        this.main = main;
         this.fileMenu = getFileMenu(menuBar);
 
         //region file menu
@@ -45,18 +40,16 @@ public class MenuBarHandler {
         //endregion
 
         //region display menu
-        Optional<Boolean> result = LocalSave.getInstance().getBoolean(SHOW_EMPTY_PROPERTY);
-        result.ifPresent(main.showEmptyCheckMenu::setSelected);
+        main.showEmptyCheckMenu.setSelected(LexiconState.getInstance().isShowEmpty());
         main.showEmptyCheckMenu.setOnAction(actionEvent -> {
-            LocalSave.getInstance().set(SHOW_EMPTY_PROPERTY, main.showEmptyCheckMenu.isSelected());
+            LexiconState.getInstance().setShowEmpty( main.showEmptyCheckMenu.isSelected());
             main.getListViewHandler().displayEntries();
         });
 
-        Optional<Boolean> fullscreen = LocalSave.getInstance().getBoolean(FULLSCREEN_PROPERTY);
-        fullscreen.ifPresent(aBoolean -> App.getInstance().getStage().setFullScreen(aBoolean));
+        App.getInstance().getStage().setFullScreen(LexiconState.getInstance().isFullscreen());
         main.fullScreenMenu.setOnAction(actionEvent -> {
             boolean switchedValue = !App.getInstance().getStage().isFullScreen();
-            LocalSave.getInstance().set(FULLSCREEN_PROPERTY, switchedValue);
+            LexiconState.getInstance().setFullscreen(switchedValue);
             App.getInstance().getStage().setFullScreen(switchedValue);
         });
         //endregion
@@ -68,7 +61,7 @@ public class MenuBarHandler {
     }
 
     private void resetApplication(ActionEvent actionEvent) {
-        LocalSave.getInstance().clear();
+        App.getInstance().clearState();
 
         main.getNavigation().clearEntry();
         main.getDatabaseAccess().clearData();
@@ -76,8 +69,8 @@ public class MenuBarHandler {
     }
 
     private Menu getFileMenu(MenuBar parent) {
-        for (Menu menu:parent.getMenus()) {
-            if (menu.getId().equals("fileMenu")){
+        for (Menu menu : parent.getMenus()) {
+            if (menu.getId().equals("fileMenu")) {
                 return menu;
             }
         }
@@ -85,15 +78,13 @@ public class MenuBarHandler {
     }
 
     public void reloadFileMenu() {
-
         fileMenu.getItems().clear();
         fileMenu.getItems().add(selectDatabaseMenu);
         fileMenu.getItems().add(clearDataMenu);
 
-        Set<String> set = main.getDatabaseAccess().getDBPaths().keySet();
+        Set<String> set = LexiconState.getInstance().getDBList();
 
-        if (set.size() > 0)
-        {
+        if (set.size() > 0) {
             fileMenu.getItems().add(new SeparatorMenuItem());
 
             List<CheckMenuItem> list = set.stream().
@@ -104,7 +95,6 @@ public class MenuBarHandler {
             String loadedDB = main.getDatabaseAccess().getLoadedDB();
             for (CheckMenuItem checkMenuItem : list) {
                 fileMenu.getItems().add(checkMenuItem);
-
                 checkMenuItem.setOnAction(actionEvent -> {
                     for (CheckMenuItem menuItem : list) {
                         menuItem.setSelected(menuItem == checkMenuItem);
@@ -116,13 +106,11 @@ public class MenuBarHandler {
                     checkMenuItem.setSelected(true);
             }
             fileMenu.getItems().add(new SeparatorMenuItem());
-        }
-        else{
+        } else {
             fileMenu.getItems().add(useDummyMenu);
         }
 
         fileMenu.getItems().add(closeMenu);
-
     }
 
     public void enableNavMenus(boolean hasFormer, boolean hasNext) {
