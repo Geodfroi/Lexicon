@@ -1,14 +1,16 @@
-package ch.azure.aurore.lexicon;
+package ch.azure.aurore.lexicon.main;
 
 import ch.azure.aurore.javaxt.collections.Directions;
 import ch.azure.aurore.javaxt.collections.NavStack;
 import ch.azure.aurore.javaxt.strings.Strings;
+import ch.azure.aurore.lexicon.DatabaseAccess;
+import ch.azure.aurore.lexicon.LexiconState;
 import ch.azure.aurore.lexiconDB.EntryContent;
 
 public class NavigationHandler {
 
-    private final NavStack<EntryContent> navStack = new NavStack<>();
-    private EntryContent currentEntry;
+    private final NavStack<Integer> navStack = new NavStack<>();
+    private int currentEntry;
 
     private final MainController main;
 
@@ -16,48 +18,47 @@ public class NavigationHandler {
         this.main = main;
     }
 
-    public EntryContent getCurrentEntry() {
+    public int getCurrentEntry() {
         return currentEntry;
     }
 
     public void clearEntry(){
         navStack.clear();
-        currentEntry = null;
+        currentEntry = 0;
         main.getFieldsHandler().clearDisplay();
         main.getMenuHandler().enableNavMenus(false, false);
     }
 
     public void navigate(Directions dir) {
-        EntryContent entry = navStack.navigateStack(dir);
-        selectEntry(entry, true);
+        int entryId = navStack.navigateStack(dir);
+        selectEntry(entryId, true);
     }
 
-    public void selectEntry(EntryContent val, boolean selectListView) {
-        if (val == null)
+    public void selectEntry(int id, boolean selectListView) {
+        if (id ==0)
             return;
 
-        navStack.add(val);
-        String currentDB = main.getDatabaseAccess().getLoadedDB();
+        navStack.add(id);
+        String currentDB = DatabaseAccess.getInstance().getLoadedDB();
         if (Strings.isNullOrEmpty(currentDB))
             throw new IllegalStateException("DB value cannot be null");
 
-        LexiconState.getInstance().setCurrentID(currentDB, val.get_id());
-        currentEntry = val;
+        LexiconState.getInstance().setCurrentID(currentDB, id);
+        currentEntry = id;
 
-        main.getFieldsHandler().displayEntry(val);
+        main.getFieldsHandler().displayEntry(id);
 
-        if (selectListView)
-            main.getListViewHandler().scrollTo(val);
+        if (selectListView){
+            EntryContent entry  = DatabaseAccess.getInstance().queryEntry(id);
+            main.getListViewHandler().scrollTo(entry);
+        }
 
         main.getMenuHandler().enableNavMenus(navStack.hasFormer(), navStack.hasNext());
     }
 
     public void toRecordedEntry(String loadedDB) {
         int id = LexiconState.getInstance().getCurrentID(loadedDB);
-        if (id != -1){
-            EntryContent entry = main.getDatabaseAccess().getByID(id);
-            if (entry != null)
-                selectEntry(entry, true);
-        }
+        if (id > 0)
+            selectEntry(id, true);
     }
 }

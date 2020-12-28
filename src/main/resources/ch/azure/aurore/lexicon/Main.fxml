@@ -7,7 +7,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.TextFlow?>
 <BorderPane fx:id="root" prefHeight="400.0" prefWidth="600.0" stylesheets="@Main.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="ch.azure.aurore.lexicon.MainController">
+            fx:controller="ch.azure.aurore.lexicon.main.MainController">
     <top>
         <MenuBar fx:id="menuBar" BorderPane.alignment="CENTER">
             <Menu fx:id="fileMenu" mnemonicParsing="false" text="File" />

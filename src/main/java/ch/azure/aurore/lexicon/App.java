@@ -9,13 +9,23 @@ import javafx.fxml.FXMLLoader;
  */
 public class App extends FXApplication {
 
+
     public static void main(String[] args) {
         launch();
     }
 
     @Override
-    protected FXMLLoader getLoader() {
-        return new FXMLLoader(App.class.getResource("Main.fxml"));
+    protected FXMLLoader getLoader(String s) {
+        return new FXMLLoader(App.class.getResource("/ch/azure/aurore/lexicon/Main.fxml"));
+    }
+
+    @Override
+    protected void start() {
+       switchScene("Main");
+    }
+
+    @Override
+    protected void quit() {
     }
 
     @Override

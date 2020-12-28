@@ -1,6 +1,7 @@
-package ch.azure.aurore.lexicon;
+package ch.azure.aurore.lexicon.main;
 
 import ch.azure.aurore.javaxt.strings.Strings;
+import ch.azure.aurore.lexicon.DatabaseAccess;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import javafx.beans.value.ChangeListener;
 import javafx.fxml.FXML;
@@ -34,7 +35,7 @@ public class NewEntryController implements Initializable {
 
     public NewEntryController(MainController main, String label) {
         this.main = main;
-        this.entries = main.getDatabaseAccess().queryEntries();
+        this.entries = DatabaseAccess.getInstance().queryEntries();
         this.labelStr = label;
     }
 
@@ -42,14 +43,8 @@ public class NewEntryController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         labelTextField.setText(labelStr);
 
-        ChangeListener<String> textChanged = (observableValue, s, t1) -> {
-            validate();
-//            switchTextEvent(false);
-//            labelTextField.setText(labelStr);
-//            switchTextEvent(true);
-        };
+        ChangeListener<String> textChanged = (observableValue, s, t1) -> validate();
         labelTextField.textProperty().addListener(textChanged);
-        //  switchTextEvent(true);
     }
 
     private void validate() {
@@ -107,9 +102,10 @@ public class NewEntryController implements Initializable {
     public void createItem() {
         String content = Strings.isNullOrEmpty(contentTextArea.getText()) ? "" : contentTextArea.getText();
         EntryContent newEntry = new EntryContent(0, labels, content);
-        if (main.getDatabaseAccess().updateItem(newEntry)) {
+        if (DatabaseAccess.getInstance().updateItem(newEntry)) {
             entries.add(newEntry);
-            main.getNavigation().selectEntry(newEntry, true);
+            main.getNavigation().selectEntry(newEntry.get_id(), true);
+            throw new RuntimeException("Not implemented: update observable list");
         }
     }
 }

@@ -1,5 +1,6 @@
-package ch.azure.aurore.lexicon;
+package ch.azure.aurore.lexicon.main;
 
+import ch.azure.aurore.lexicon.DatabaseAccess;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import ch.azure.aurore.lexiconDB.IEntryListener;
 import javafx.beans.value.ChangeListener;
@@ -28,19 +29,16 @@ public class ListViewHandler {
         this.listView = listView;
 
         listView.setCellFactory(entryContentListView -> new EntryListCell());
-        listViewListener = (observableValue, entryContent, t1) -> main.getNavigation().selectEntry(t1, false);
+        listViewListener = (observableValue, entryContent, t1) -> main.getNavigation().selectEntry(t1.get_id(), false);
         switchListViewEvent(true);
 
         //region context menu
         ContextMenu menu = new ContextMenu();
         MenuItem delete = new MenuItem("Delete Selection");
-        delete.setOnAction(actionEvent -> {
-            EntryContent current = main.getNavigation().getCurrentEntry();
-            if (current != null) {
-                switchListViewEvent(false);
-                main.getDatabaseAccess().deleteEntry(current);
-                switchListViewEvent(true);
-            }
+        delete.setOnAction(e -> {
+            switchListViewEvent(false);
+            main.getMenuHandler().deleteCurrentEntry();
+            switchListViewEvent(true);
         });
         menu.getItems().add(delete);
         listView.setContextMenu(menu);
@@ -54,16 +52,8 @@ public class ListViewHandler {
         //endregion
     }
 
-    private void switchListViewEvent(boolean value) {
-        if (value){
-            listView.getSelectionModel().selectedItemProperty().addListener(listViewListener);
-        }else{
-            listView.getSelectionModel().selectedItemProperty().removeListener(listViewListener);
-        }
-    }
-
     public void displayEntries() {
-        ObservableList<EntryContent> entries = FXCollections.observableList(main.getDatabaseAccess().queryEntries());
+        ObservableList<EntryContent> entries = FXCollections.observableList(DatabaseAccess.getInstance().queryEntries());
         if (entries.size() == 0)
             return;
 
@@ -81,16 +71,26 @@ public class ListViewHandler {
         SortedList<EntryContent> sortedList = new SortedList<>(filteredList, (left, right) -> left.getFirstLabel().compareToIgnoreCase(right.getFirstLabel()));
         listView.setItems(sortedList);
 
-        EntryContent selection = main.getNavigation().getCurrentEntry();
-        if (selection != null)
-            listView.getSelectionModel().select(selection);
+        int selection = main.getNavigation().getCurrentEntry();
+        if (selection != 0) {
+            EntryContent item = DatabaseAccess.getInstance().queryEntry(selection);
+            listView.getSelectionModel().select(item);
+        }
     }
 
     public void scrollTo(EntryContent val) {
         switchListViewEvent(false);
         listView.getSelectionModel().select(val);
         switchListViewEvent(true);
-       // main.entriesListView.scrollTo(val);
+        // main.entriesListView.scrollTo(val);
+    }
+
+    private void switchListViewEvent(boolean value) {
+        if (value) {
+            listView.getSelectionModel().selectedItemProperty().addListener(listViewListener);
+        } else {
+            listView.getSelectionModel().selectedItemProperty().removeListener(listViewListener);
+        }
     }
 }
 
@@ -101,7 +101,7 @@ class EntryListCell extends ListCell<EntryContent> implements IEntryListener {
 
         if (empty)
             setText("");
-        else{
+        else {
             item.addListener(this);
             String txt = EntryContent.toLabelStr(item.getLabels());
             setText(txt);

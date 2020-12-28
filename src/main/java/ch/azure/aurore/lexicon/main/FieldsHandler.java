@@ -1,10 +1,12 @@
-package ch.azure.aurore.lexicon;
+package ch.azure.aurore.lexicon.main;
 
 import ch.azure.aurore.javaxt.IO.API.Disk;
 import ch.azure.aurore.javaxt.collections.Sets;
 import ch.azure.aurore.javaxt.conversions.Conversions;
 import ch.azure.aurore.javaxt.images.API.Images;
 import ch.azure.aurore.javaxt.strings.Strings;
+import ch.azure.aurore.lexicon.App;
+import ch.azure.aurore.lexicon.DatabaseAccess;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -57,12 +59,12 @@ class ContentHandler {
         }
 
         List<TextLink> links = new ArrayList<>();
-        for (EntryContent entry : parent.getMain().getDatabaseAccess().queryEntries()) {
+        for (EntryContent entry : DatabaseAccess.getInstance().queryEntries()) {
             for (String label : entry.getLabels()) {
                 String regex = "\\b(" + label + "|" + Strings.unCamel(label) + "[sx]?)\\b";
                 Matcher matcher = Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(content);
                 while (matcher.find()) {
-                    TextLink link = new TextLink(entry, matcher.start(), matcher.end());
+                    TextLink link = new TextLink(entry.get_id(), matcher.start(), matcher.end());
                     links.add(link);
                 }
             }
@@ -82,13 +84,13 @@ class ContentHandler {
             }
 
             String linkStr = content.substring(link.getStartIndex(), link.getEndIndex());
-            if (link.getEntry() != parent.getDisplayEntry()) {
+            if (link.getEntryID() != parent.getDisplayEntry().get_id()) {
                 if (nodes.size() > 1 && nodes.get(nodes.size() - 1) instanceof Hyperlink) {
                     nodes.add(new Text(" "));
                 }
 
                 Hyperlink hyperlink = new Hyperlink(linkStr);
-                hyperlink.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(link.getEntry(), true));
+                hyperlink.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(link.getEntryID(), true));
                 nodes.add(hyperlink);
             } else {
                 myText text = myText.create(parent, linkStr, myText.INVALID_LINK);
@@ -172,16 +174,15 @@ public class FieldsHandler {
         main.root.requestFocus();
     }
 
-    public void displayEntry(EntryContent val) {
-
+    public void displayEntry(int id) {
         recordDisplay();
         clearFocus();
         clearDisplay();
-        displayedEntry = val;
-        contentHandler.displayEntry(val);
-        imageHandler.displayEntry(val);
-        labelHandler.displayEntry(val);
-        linkHandler.displayEntry(val);
+        displayedEntry = DatabaseAccess.getInstance().queryEntry(id);
+        contentHandler.displayEntry(displayedEntry);
+        imageHandler.displayEntry(displayedEntry);
+        labelHandler.displayEntry(displayedEntry);
+        linkHandler.displayEntry(displayedEntry);
     }
 
     public void recordDisplay() {
@@ -190,7 +191,7 @@ public class FieldsHandler {
             imageHandler.recordToEntry(displayedEntry);
             labelHandler.recordToEntry(displayedEntry);
             linkHandler.recordToEntry(displayedEntry);
-            main.getDatabaseAccess().updateItem(displayedEntry);
+            DatabaseAccess.getInstance().updateItem(displayedEntry);
         }
     }
     //endregion
@@ -365,7 +366,7 @@ class LabelHandler {
 
     private String validateText() {
         EntryContent current = parent.getDisplayEntry();
-        List<EntryContent> entries = parent.getMain().getDatabaseAccess().queryEntries();
+        List<EntryContent> entries = DatabaseAccess.getInstance().queryEntries();
         if (current == null || entries.size() == 0) {
             return "";
         }
@@ -406,7 +407,7 @@ class LabelHandler {
 class LinkHandler {
 
     private final FieldsHandler parent;
-    private final Set<Integer> adisplayLinkIds = new HashSet<>();
+    private final Set<Integer> displayLinkIds = new HashSet<>();
     private String linkStr = "";
 
     public LinkHandler(FieldsHandler parent) {
@@ -435,7 +436,7 @@ class LinkHandler {
     }
 
     public void clearDisplay() {
-        adisplayLinkIds.clear();
+        displayLinkIds.clear();
         parent.getMain().linksTextFlow.getChildren().clear();
         parent.getMain().linksTextArea.clear();
         linkStr = null;
@@ -446,22 +447,30 @@ class LinkHandler {
         if (!isLast)
             label += ", ";
         Hyperlink link = new Hyperlink(label);
-        link.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(entry, true));
+        link.setOnAction(actionEvent -> parent.getMain().getNavigation().selectEntry(entry.get_id(), true));
         return link;
     }
 
     public void displayEntry(EntryContent val) {
-        adisplayLinkIds.addAll(val.getLinks());
-        linkStr = toLinkString(adisplayLinkIds, parent.getMain().getDatabaseAccess());
+
+        // repair single links
+        for (EntryContent e : DatabaseAccess.getInstance().queryEntries()) {
+            if (e.getLinks().contains(val.get_id()))
+                EntryContent.createLink(val, e);
+        }
+
+        displayLinkIds.addAll(val.getLinks());
+        linkStr = toLinkString(displayLinkIds, DatabaseAccess.getInstance());
         displayTextFlow();
     }
 
     private void displayTextFlow() {
-        if (adisplayLinkIds.size() == 0)
+        if (displayLinkIds.size() == 0)
             return;
 
-        List<EntryContent> links = getLinks(adisplayLinkIds, parent.getMain().getDatabaseAccess());
+        List<EntryContent> links = getLinks(displayLinkIds, DatabaseAccess.getInstance());
         links.forEach(e -> {
+            EntryContent.createLink(parent.getDisplayEntry(), e); // <- assert reciprocity
             Hyperlink h = createLink(e, links.indexOf(e) == links.size() - 1);
             parent.getMain().linksTextFlow.getChildren().add(h);
         });
@@ -481,7 +490,7 @@ class LinkHandler {
     }
 
     private void updateLinks(String txt) {
-        adisplayLinkIds.clear();
+        displayLinkIds.clear();
         linkStr = "";
 
         if (Strings.isNullOrEmpty(txt))
@@ -491,30 +500,30 @@ class LinkHandler {
                 map(s -> LabelHandler.getSearchPattern(Strings.camel(s))).
                 collect(Collectors.toList());
 
-        for (EntryContent e : parent.getMain().getDatabaseAccess().queryEntries()) {
+        for (EntryContent e : DatabaseAccess.getInstance().queryEntries()) {
             if (patterns.stream().anyMatch(p -> p.matcher(e.getLabelStr()).matches()))
-                adisplayLinkIds.add(e.get_id());
+                displayLinkIds.add(e.get_id());
         }
-        this.linkStr = toLinkString(adisplayLinkIds, parent.getMain().getDatabaseAccess());
+        this.linkStr = toLinkString(displayLinkIds, DatabaseAccess.getInstance());
     }
 
     public void recordToEntry(EntryContent val) {
-        HashSet<Integer> toRecord = new HashSet<>(adisplayLinkIds);
+        HashSet<Integer> toRecord = new HashSet<>(displayLinkIds);
         toRecord.removeAll(val.getLinks());
         HashSet<Integer> toRemove = new HashSet<>(val.getLinks());
-        toRemove.removeAll(adisplayLinkIds);
+        toRemove.removeAll(displayLinkIds);
 
         EntryContent entry;
         for (Integer id : toRecord) {
-            if ((entry = parent.getMain().getDatabaseAccess().queryEntry(id)) != null) {
+            if ((entry = DatabaseAccess.getInstance().queryEntry(id)) != null) {
                 EntryContent.createLink(val, entry);
-                parent.getMain().getDatabaseAccess().updateItem(entry);
+                DatabaseAccess.getInstance().updateItem(entry);
             }
         }
         for (Integer id : toRemove) {
-            if ((entry = parent.getMain().getDatabaseAccess().queryEntry(id)) != null) {
+            if ((entry = DatabaseAccess.getInstance().queryEntry(id)) != null) {
                 EntryContent.removeLink(val, entry);
-                parent.getMain().getDatabaseAccess().updateItem(entry);
+                DatabaseAccess.getInstance().updateItem(entry);
             }
         }
     }
@@ -544,7 +553,7 @@ class myText extends Text {
 
         ContextMenu menu = new ContextMenu();
         MenuItem createEntry = new MenuItem("");
-        createEntry.setOnAction(actionEvent -> handler.getMain().getDatabaseAccess().createEntry(str));
+        createEntry.setOnAction(actionEvent -> handler.getMain().getMenuHandler().createEntry(str));
         menu.getItems().add(createEntry);
 
         if (type > 0) {
@@ -574,16 +583,16 @@ class TextLink {
 
     private final int endIndex;
     private final int startIndex;
-    private final EntryContent entry;
+    private final int entryID;
 
-    public TextLink(EntryContent entry, int startIndex, int endIndex) {
-        this.entry = entry;
+    public TextLink(int entryID, int startIndex, int endIndex) {
+        this.entryID = entryID;
         this.startIndex = startIndex;
         this.endIndex = endIndex;
     }
 
-    public EntryContent getEntry() {
-        return entry;
+    public int getEntryID() {
+        return entryID;
     }
 
     public int getEndIndex() {
@@ -596,6 +605,10 @@ class TextLink {
 
     @Override
     public String toString() {
-        return entry.getFirstLabel() + "@" + startIndex;
+        return "TextLink{" +
+                "endIndex=" + endIndex +
+                ", startIndex=" + startIndex +
+                ", entryID=" + entryID +
+                '}';
     }
 }

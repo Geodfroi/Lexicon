@@ -1,6 +1,9 @@
-package ch.azure.aurore.lexicon;
+package ch.azure.aurore.lexicon.main;
 
-import ch.azure.aurore.javaxt.fxml.IController;
+import ch.azure.aurore.javaxt.fxml.Controller;
+import ch.azure.aurore.javaxt.strings.Strings;
+import ch.azure.aurore.lexicon.DatabaseAccess;
+import ch.azure.aurore.lexicon.LexiconState;
 import ch.azure.aurore.lexiconDB.EntryContent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -12,7 +15,7 @@ import javafx.scene.text.TextFlow;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-public class MainController implements IController {
+public class MainController extends Controller {
 
     //region fields
     //region FXML fields
@@ -59,8 +62,7 @@ public class MainController implements IController {
     //endregion
 
     private ListViewHandler listViewHandler;
-    private MenuBarHandler menuHandler;
-    private DatabaseAccess databaseAccess;
+    private MenuHandler menuHandler;
 
     private NavigationHandler navigationHandler;
     private FieldsHandler fieldsHandler;
@@ -70,7 +72,7 @@ public class MainController implements IController {
         return listViewHandler;
     }
 
-    public MenuBarHandler getMenuHandler() {
+    public MenuHandler getMenuHandler() {
         return menuHandler;
     }
 
@@ -82,26 +84,36 @@ public class MainController implements IController {
         return fieldsHandler;
     }
 
-    public DatabaseAccess getDatabaseAccess() {
-        return databaseAccess;
-    }
-
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         listViewHandler = new ListViewHandler(this, entriesListView);
-        menuHandler = new MenuBarHandler(this, menuBar);
-        databaseAccess = new DatabaseAccess(this);
+        menuHandler = new MenuHandler(this, menuBar);
         navigationHandler = new NavigationHandler(this);
         fieldsHandler = new FieldsHandler(this);
     }
 
     public void quit() {
         fieldsHandler.recordDisplay();
-        databaseAccess.close();
+        DatabaseAccess.getInstance().close();
+    }
+
+    @Override
+    protected void resume() {
     }
 
     public void start() {
-        databaseAccess.loadDatabase();
-        menuHandler.reloadFileMenu();
+        String name = LexiconState.getInstance().getCurrentPathStr();
+        if (!Strings.isNullOrEmpty(name)) {
+            loadDatabase(name);
+        }
+    }
+
+    public void loadDatabase(String name) {
+        if (DatabaseAccess.getInstance().loadDatabase(name)) {
+            listViewHandler.displayEntries();
+            menuHandler.reloadFileMenu();
+            navigationHandler.clearEntry();
+            navigationHandler.toRecordedEntry(name);
+        }
     }
 }
